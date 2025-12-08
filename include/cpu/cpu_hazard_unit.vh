@@ -1,0 +1,8 @@
+`ifndef PUTER_CPU_HAZARD_UNIT_VH
+`define PUTER_CPU_HAZARD_UNIT_VH
+
+`define FORWARD_NONE 2'd0
+`define FORWARD_WRITEBACK 2'd1
+`define FORWARD_MEMORY 2'd2
+
+`endif

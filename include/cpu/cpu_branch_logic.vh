@@ -1,0 +1,15 @@
+`ifndef PUTER_CPU_BRANCH_LOGIC_VH
+`define PUTER_CPU_BRANCH_LOGIC_VH
+
+`define PC_SRC_PC_PLUS_4 2'd0
+`define PC_SRC_PC_TARGET 2'd1
+`define PC_SRC_ALU 2'd2
+
+`define BRANCH_COND_EQ 3'b000
+`define BRANCH_COND_NE 3'b001
+`define BRANCH_COND_LT 3'b100
+`define BRANCH_COND_GE 3'b101
+`define BRANCH_COND_LTU 3'b110
+`define BRANCH_COND_GEU 3'b111
+
+`endif
