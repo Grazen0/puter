@@ -1,8 +1,17 @@
 `ifndef PUTER_CPU_CSR_FILE_VH
 `define PUTER_CPU_CSR_FILE_VH
 
+`define CSR_MIE 12'h304
 `define CSR_MTVEC 12'h305
+
+`define CSR_MSCRATCH 12'h340
 `define CSR_MEPC 12'h341
+`define CSR_MCAUSE 12'h342
+`define CSR_MIP 12'h344
+
 `define CSR_MCYCLE 12'hB00
+`define CSR_MCYCLEH 12'hB80
+`define CSR_MINSTRET 12'hB02
+`define CSR_MINSTRETH 12'hB82
 
 `endif

@@ -18,6 +18,7 @@ module cpu (
 
   wire [1:0] forward_a_e;
   wire [1:0] forward_b_e;
+  wire [1:0] forward_csr_e;
   wire stall_f;
   wire stall_d;
   wire flush_d;
@@ -31,17 +32,23 @@ module cpu (
 
       .rs2_e(rs2_e),
       .rd_e(rd_e),
+      .csrs_e(csrs_e),
       .pc_src_e(pc_src_e),
       .result_src_e(result_src_e),
 
       .reg_write_m(reg_write_m),
+      .csr_write_m(csr_write_m),
       .rd_m(rd_m),
+      .csrs_m(csrs_m),
 
       .reg_write_w(reg_write_w),
+      .csr_write_w(csr_write_w),
       .rd_w(rd_w),
+      .csrs_w(csrs_w),
 
-      .forward_a_e(forward_a_e),
-      .forward_b_e(forward_b_e),
+      .forward_a_e  (forward_a_e),
+      .forward_b_e  (forward_b_e),
+      .forward_csr_e(forward_csr_e),
 
       .stall_f(stall_f),
       .stall_d(stall_d),
@@ -78,16 +85,22 @@ module cpu (
   wire [31:0] pc_plus_4_f = pc_f + 4;
 
   // 2. Decode
-  reg  [31:0] instr_d;
-  reg  [31:0] pc_d;
-  reg  [31:0] pc_plus_4_d;
+  reg bubble_d;
+
+  reg [31:0] instr_d;
+  reg [31:0] pc_d;
+  reg [31:0] pc_plus_4_d;
 
   always @(posedge clk) begin
     if (!rst_n || flush_d) begin
+      bubble_d    <= 1;
+
       instr_d     <= 32'h0000_0013;  // nop
       pc_d        <= {32{1'bx}};
       pc_plus_4_d <= {32{1'bx}};
     end else if (!stall_d) begin
+      bubble_d    <= 0;
+
       instr_d     <= instr_f;
       pc_d        <= pc_f;
       pc_plus_4_d <= pc_plus_4_f;
@@ -99,35 +112,39 @@ module cpu (
   wire [6:0] funct7_d = instr_d[31:25];
 
   wire       reg_write_d;
-  wire [1:0] result_src_d;
+  wire [2:0] result_src_d;
   wire [3:0] mem_write_d;
   wire       jump_d;
   wire       branch_d;
   wire [3:0] alu_control_d;
-  wire       alu_src_b_d;
+  wire       alu_src_a_d;
+  wire [1:0] alu_src_b_d;
   wire [2:0] imm_src_d;
   wire [2:0] data_ext_control_d;
   wire       jump_src_d;
   wire [2:0] branch_cond_d;
   wire       illegal_instr_d;
+  wire       csr_write_d;
 
   cpu_control control (
-      .op(op_d),
+      .op    (op_d),
       .funct3(funct3_d),
       .funct7(funct7_d),
 
-      .reg_write(reg_write_d),
-      .result_src(result_src_d),
-      .mem_write(mem_write_d),
-      .jump(jump_d),
-      .branch(branch_d),
-      .alu_control(alu_control_d),
-      .alu_src_b(alu_src_b_d),
-      .imm_src(imm_src_d),
+      .reg_write       (reg_write_d),
+      .result_src      (result_src_d),
+      .mem_write       (mem_write_d),
+      .jump            (jump_d),
+      .branch          (branch_d),
+      .alu_control     (alu_control_d),
+      .alu_src_a       (alu_src_a_d),
+      .alu_src_b       (alu_src_b_d),
+      .imm_src         (imm_src_d),
       .data_ext_control(data_ext_control_d),
-      .jump_src(jump_src_d),
-      .branch_cond(branch_cond_d),
-      .illegal_instr(illegal_instr_d)
+      .jump_src        (jump_src_d),
+      .branch_cond     (branch_cond_d),
+      .illegal_instr   (illegal_instr_d),
+      .csr_write       (csr_write_d)
   );
 
   wire [31:0] rd1_d;
@@ -160,68 +177,104 @@ module cpu (
       .imm_ext(imm_ext_d)
   );
 
+  wire [11:0] csrs_d = instr_d[31:20];
+
+  wire [31:0] csrd_d;
+
+  cpu_csr_file csr_file (
+      .clk  (~clk),
+      .rst_n(rst_n),
+
+      .raddr(csrs_d),
+      .rdata(csrd_d),
+
+      .waddr  (csrs_w),
+      .wdata  (alu_result_w),
+      .wenable(csr_write_w),
+
+      .bubble_w(bubble_w)
+  );
+
   // 3. Execute
+  reg        bubble_e;
+
   reg        reg_write_e;
-  reg [ 1:0] result_src_e;
+  reg [ 2:0] result_src_e;
   reg [ 3:0] mem_write_e;
   reg        jump_e;
   reg        branch_e;
   reg [ 3:0] alu_control_e;
-  reg        alu_src_b_e;
+  reg        alu_src_a_e;
+  reg [ 1:0] alu_src_b_e;
   reg [ 2:0] data_ext_control_e;
   reg        jump_src_e;
   reg [ 2:0] branch_cond_e;
   reg        illegal_instr_e;
+  reg        csr_write_e;
 
   reg [31:0] rd1_e;
   reg [31:0] rd2_e;
+  reg [31:0] csrd_e;
   reg [31:0] pc_e;
   reg [ 4:0] rs1_e;
   reg [ 4:0] rs2_e;
+  reg [11:0] csrs_e;
   reg [ 4:0] rd_e;
   reg [31:0] imm_ext_e;
   reg [31:0] pc_plus_4_e;
 
   always @(posedge clk) begin
     if (!rst_n || flush_e) begin
+      bubble_e           <= 1;
+
       reg_write_e        <= 0;
       result_src_e       <= `RESULT_SRC_ALU;
       mem_write_e        <= 4'b0000;
       jump_e             <= 0;
       branch_e           <= 0;
       alu_control_e      <= 4'bxxxx;
-      alu_src_b_e        <= 1'bx;
+      alu_src_a_e        <= 1'bx;
+      alu_src_b_e        <= 2'bxx;
       data_ext_control_e <= 3'bxxx;
       jump_src_e         <= 0;
       branch_cond_e      <= 3'bxxx;
       illegal_instr_e    <= 0;
+      csr_write_e        <= 0;
 
       rd1_e              <= {32{1'bx}};
       rd2_e              <= {32{1'bx}};
+      csrd_e             <= {32{1'bx}};
       pc_e               <= {32{1'bx}};
       rs1_e              <= 5'bxxxxx;
       rs2_e              <= 5'bxxxxx;
+      csrs_e             <= {11{1'bx}};
       rd_e               <= 5'bxxxxx;
       imm_ext_e          <= {32{1'bx}};
       pc_plus_4_e        <= {32{1'bx}};
     end else begin
+      bubble_e           <= bubble_d;
+
       reg_write_e        <= reg_write_d;
       result_src_e       <= result_src_d;
       mem_write_e        <= mem_write_d;
       jump_e             <= jump_d;
       branch_e           <= branch_d;
       alu_control_e      <= alu_control_d;
+      alu_src_a_e        <= alu_src_a_d;
       alu_src_b_e        <= alu_src_b_d;
       data_ext_control_e <= data_ext_control_d;
       jump_src_e         <= jump_src_d;
       branch_cond_e      <= branch_cond_d;
       illegal_instr_e    <= illegal_instr_d;
+      csr_write_e        <= csr_write_d;
 
       rd1_e              <= rd1_d;
       rd2_e              <= rd2_d;
+      csrd_e             <= csrd_d;
       pc_e               <= pc_d;
       rs1_e              <= rs1_d;
       rs2_e              <= rs2_d;
+      csrs_e             <= csrs_d;
       rd_e               <= rd_d;
       imm_ext_e          <= imm_ext_d;
       pc_plus_4_e        <= pc_plus_4_d;
@@ -237,6 +290,7 @@ module cpu (
 
   reg [31:0] rd1_fw_e;
   reg [31:0] rd2_fw_e;
+  reg [31:0] csrd_fw_e;
 
   always @(*) begin
     case (forward_a_e)
@@ -252,10 +306,33 @@ module cpu (
       `FORWARD_MEMORY:    rd2_fw_e = result_pre_m;
       default:            rd2_fw_e = {32{1'bx}};
     endcase
+
+    case (forward_csr_e)
+      `FORWARD_NONE:      csrd_fw_e = csrd_e;
+      `FORWARD_WRITEBACK: csrd_fw_e = alu_result_w;
+      `FORWARD_MEMORY:    csrd_fw_e = alu_result_m;
+      default:            csrd_fw_e = {32{1'bx}};
+    endcase
   end
 
-  wire [31:0] alu_src_a_val_e = rd1_fw_e;
-  wire [31:0] alu_src_b_val_e = alu_src_b_e == `ALU_SRC_B_RS2 ? rd2_fw_e : imm_ext_e;
+  reg [31:0] alu_src_a_val_e;
+  reg [31:0] alu_src_b_val_e;
+
+  always @(*) begin
+    case (alu_src_a_e)
+      `ALU_SRC_A_RD1: alu_src_a_val_e = rd1_fw_e;
+      `ALU_SRC_A_CSR: alu_src_a_val_e = csrd_fw_e;
+      default: alu_src_a_val_e = {32{1'bx}};
+    endcase
+
+    case (alu_src_b_e)
+      `ALU_SRC_B_RD2: alu_src_b_val_e = rd2_fw_e;
+      `ALU_SRC_B_IMM: alu_src_b_val_e = imm_ext_e;
+      `ALU_SRC_B_RD1: alu_src_b_val_e = rd1_fw_e;
+      `ALU_SRC_B_RS1: alu_src_b_val_e = rs1_e;
+      default: alu_src_b_val_e = {32{1'bx}};
+    endcase
+  end
 
   wire [31:0] alu_result_e;
   wire alu_carry_e;
@@ -296,37 +373,51 @@ module cpu (
   wire [31:0] write_data_e = rd2_fw_e;
 
   // 4. Memory
+  reg         bubble_m;
+
   reg         reg_write_m;
-  reg  [ 1:0] result_src_m;
+  reg  [ 2:0] result_src_m;
   reg  [ 3:0] mem_write_m;
   reg  [ 2:0] data_ext_control_m;
+  reg         csr_write_m;
 
+  reg  [31:0] csrd_m;
   reg  [31:0] alu_result_m;
   reg  [31:0] write_data_m;
+  reg  [11:0] csrs_m;
   reg  [ 4:0] rd_m;
   reg  [31:0] pc_plus_4_m;
   reg  [31:0] pc_target_m;
 
   always @(posedge clk) begin
     if (!rst_n) begin
+      bubble_m           <= 1;
+
       reg_write_m        <= 0;
       result_src_m       <= 2'bxx;
       mem_write_m        <= 4'b0000;
       data_ext_control_m <= 3'bxxx;
+      csr_write_m        <= 0;
 
+      csrd_m             <= {32{1'bx}};
       alu_result_m       <= {32{1'bx}};
       write_data_m       <= {32{1'bx}};
+      csrs_m             <= {11{1'bx}};
       rd_m               <= 5'bxxxxx;
       pc_plus_4_m        <= {32{1'bx}};
       pc_target_m        <= {32{1'bx}};
     end else begin
+      bubble_m           <= bubble_e;
       reg_write_m        <= reg_write_e;
       result_src_m       <= result_src_e;
       mem_write_m        <= mem_write_e;
       data_ext_control_m <= data_ext_control_e;
+      csr_write_m        <= csr_write_e;
 
+      csrd_m             <= csrd_fw_e;
       alu_result_m       <= alu_result_e;
       write_data_m       <= write_data_e;
+      csrs_m             <= csrs_e;
       rd_m               <= rd_e;
       pc_plus_4_m        <= pc_plus_4_e;
       pc_target_m        <= pc_target_e;
@@ -352,36 +443,52 @@ module cpu (
       `RESULT_SRC_ALU:       result_pre_m = alu_result_m;
       `RESULT_SRC_PC_PLUS_4: result_pre_m = pc_plus_4_m;
       `RESULT_SRC_PC_TARGET: result_pre_m = pc_target_m;
+      `RESULT_SRC_CSR:       result_pre_m = csrd_m;
       default:               result_pre_m = {32{1'bx}};
     endcase
   end
 
   // 5. Writeback
-  reg        reg_write_w;
-  reg [ 1:0] result_src_w;
+  reg        bubble_w;
 
+  reg        reg_write_w;
+  reg [ 2:0] result_src_w;
+  reg        csr_write_w;
+
+  reg [31:0] alu_result_w;
   reg [31:0] result_pre_w;
   reg [31:0] read_data_w;
+  reg [11:0] csrs_w;
   reg [ 4:0] rd_w;
   reg [31:0] pc_plus_4_w;
   reg [31:0] pc_target_w;
 
   always @(posedge clk) begin
     if (!rst_n) begin
+      bubble_w     <= 1;
+
       reg_write_w  <= 0;
       result_src_w <= 2'bxx;
+      csr_write_w  <= 0;
 
+      alu_result_w <= {32{1'bx}};
       result_pre_w <= {32{1'bx}};
       read_data_w  <= {32{1'bx}};
+      csrs_w       <= {11{1'bx}};
       rd_w         <= 5'bxxxxx;
       pc_plus_4_w  <= {32{1'bx}};
       pc_target_w  <= {32{1'bx}};
     end else begin
+      bubble_w     <= bubble_m;
+
       reg_write_w  <= reg_write_m;
       result_src_w <= result_src_m;
+      csr_write_w  <= csr_write_m;
 
+      alu_result_w <= alu_result_m;
       result_pre_w <= result_pre_m;
       read_data_w  <= read_data_m;
+      csrs_w       <= csrs_m;
       rd_w         <= rd_m;
       pc_plus_4_w  <= pc_plus_4_m;
       pc_target_w  <= pc_target_m;
