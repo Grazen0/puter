@@ -13,7 +13,7 @@ void _exit(void)
     }
 }
 
-int _close(int file)
+int _close([[maybe_unused]] const int file)
 {
     return -1;
 }
@@ -21,7 +21,8 @@ int _close(int file)
 char *__env[1] = {0};
 char **environ = __env;
 
-int _execve(char *name, char **argv, char **env)
+int _execve([[maybe_unused]] char *const name, [[maybe_unused]] char **const argv,
+            [[maybe_unused]] char **const env)
 {
     errno = ENOMEM;
     return -1;
@@ -33,7 +34,7 @@ int _fork(void)
     return -1;
 }
 
-int _fstat(int file, struct stat *st)
+int _fstat([[maybe_unused]] const int file, [[maybe_unused]] struct stat *const st)
 {
     st->st_mode = __S_IFCHR;
     return 0;
@@ -44,42 +45,44 @@ int _getpid(void)
     return 1;
 }
 
-int _isatty(int file)
+int _isatty([[maybe_unused]] const int file)
 {
     return 1;
 }
 
-int _kill(int pid, int sig)
+int _kill([[maybe_unused]] const int pid, [[maybe_unused]] const int sig)
 {
     errno = EINVAL;
     return -1;
 }
 
-int _link(char *old, char *new)
+int _link([[maybe_unused]] char *const old, [[maybe_unused]] char *const new)
 {
     errno = EMLINK;
     return -1;
 }
 
-int _lseek(int file, int ptr, int dir)
+int _lseek([[maybe_unused]] const int file, [[maybe_unused]] const int ptr,
+           [[maybe_unused]] const int dir)
 {
     return 0;
 }
 
-int _open(const char *name, int flags, int mode)
+int _open([[maybe_unused]] const char *name, [[maybe_unused]] const int flags,
+          [[maybe_unused]] const int mode)
 {
     return -1;
 }
 
-int _read(int file, char *ptr, int len)
+int _read([[maybe_unused]] const int file, [[maybe_unused]] char *const ptr,
+          [[maybe_unused]] const int len)
 {
     return 0;
 }
 
-void *_sbrk(int incr)
+void *_sbrk(const int incr)
 {
     extern char _end;
-    extern char _stack_bottom;
 
     static char *heap_end = &_end;
     char *prev_heap_end = heap_end;
@@ -93,33 +96,33 @@ void *_sbrk(int incr)
     }
 
     heap_end += incr;
-    return (void *)prev_heap_end;
+    return prev_heap_end;
 }
 
-int stat(const char *file, struct stat *st)
+int stat([[maybe_unused]] const char *file, [[maybe_unused]] struct stat *const st)
 {
     st->st_mode = __S_IFCHR;
     return 0;
 }
 
-clock_t times(struct tms *buf)
+clock_t times([[maybe_unused]] struct tms *const buf)
 {
     return -1;
 }
 
-int unlink(char *name)
+int unlink([[maybe_unused]] char *const name)
 {
     errno = ENOENT;
     return -1;
 }
 
-int wait(int *status)
+int wait([[maybe_unused]] int *const status)
 {
     errno = ECHILD;
     return -1;
 }
 
-int _write(int file, char *ptr, int len)
+int _write([[maybe_unused]] const int file, char *const ptr, const int len)
 {
     sprint(ptr, len);
     return len;
