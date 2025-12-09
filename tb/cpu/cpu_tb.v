@@ -50,7 +50,7 @@ module cpu_tb ();
 
   always @(posedge clk) begin
     #1;
-    if (|data_wenable && data_addr == 32'h8000_0000) begin
+    if (|data_wenable && data_addr == 32'h1000_0000) begin
       $write("%c", data_wdata);
       $fflush();
     end

@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-static constexpr size_t SCREEN_BASE = 0x8000'0000;
+static constexpr size_t SCREEN_BASE = 0x1000'0000U;
 #define SCREEN (*(volatile char *)SCREEN_BASE)
 
 void print(const char *s);
