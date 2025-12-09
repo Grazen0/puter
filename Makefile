@@ -21,8 +21,9 @@ FW_LINKER := $(FW_BASE)/data/linker.ld
 FW_INC_DIRS := $(shell find $(FW_SRC_DIRS) -type d)
 FW_INC_FLAGS := $(addprefix -I,$(FW_INC_DIRS))
 
-CFLAGS := $(FW_INC_FLAGS) -march=rv32i -mabi=ilp32 -std=c23 -O2 -g \
-		  -specs=nano.specs -nostartfiles
+CFLAGS := $(FW_INC_FLAGS) -march=rv32i_zicsr -mabi=ilp32 -std=c23 -O2 -g \
+		  -specs=nano.specs -nostartfiles -ffreestanding \
+		  -Wall -Wextra -Wpedantic
 
 CC := riscv32-none-elf-gcc
 OBJCOPY := riscv32-none-elf-objcopy
