@@ -1,9 +1,8 @@
-`default_nettype none
+`default_nettype none `timescale 1ns / 1ps
 
 module word_ram #(
-    parameter SIZE_WORDS  = 2 ** 13,
-    parameter SOURCE_FILE = "",
-    parameter ADDR_WIDTH  = $clog2(4 * SIZE_WORDS)
+    parameter SIZE_WORDS = 2 ** 13,
+    parameter ADDR_WIDTH = $clog2(4 * SIZE_WORDS)
 ) (
     input wire clk,
 
@@ -17,10 +16,11 @@ module word_ram #(
   wire [29:0] word_addr_1 = addr_1[ADDR_WIDTH-1:2];
   wire [1:0] offset_1 = addr_1[1:0];
 
+  wire [31:0] wvalue_base = data[word_addr_1];
   reg [31:0] wvalue;
 
   always @(*) begin
-    wvalue = data[word_addr_1];
+    wvalue = wvalue_base;
 
     if (wenable_1[0]) wvalue[7+(8*offset_1)-:8] = wdata_1[7:0];
     if (wenable_1[1]) wvalue[15+(8*offset_1)-:8] = wdata_1[15:8];
@@ -33,10 +33,4 @@ module word_ram #(
   end
 
   assign rdata_1 = data[word_addr_1] >> (8 * offset_1);
-
-  initial begin
-    if (SOURCE_FILE != "") begin
-      $readmemh(SOURCE_FILE, data);
-    end
-  end
 endmodule

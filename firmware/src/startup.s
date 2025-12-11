@@ -5,16 +5,21 @@ _start:
     la      sp, _stack_top
     la      gp, __global_pointer$
 
+    la      t0, trap_handler
+    csrw    mtvec, t0
+
     # Initialize .data
     la      t0, _data_start
     la      t1, _data_end
     la      t2, _text_end
 init_data:
     bgeu    t0, t1, data_done
+
     lw      t3, 0(t2)
+    addi    t2, t2, 4 # reordered to prevent lw stall
     sw      t3, 0(t0)
     addi    t0, t0, 4
-    addi    t2, t2, 4
+
     j       init_data
 data_done:
 

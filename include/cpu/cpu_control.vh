@@ -15,8 +15,15 @@
 `define RESULT_SRC_PC_TARGET 3'd3
 `define RESULT_SRC_CSR 3'd4
 
-`define JUMP_SRC_PC_TARGET 1'd0
-`define JUMP_SRC_ALU 1'd1
+`define JUMP_SRC_PC_TARGET 2'd0
+`define JUMP_SRC_ALU 2'd1
+`define JUMP_SRC_MTVEC 2'd2
+`define JUMP_SRC_MEPC 3'd3
+
+`define EXCAUSE_INSTR_ADDR_MISALIGNED 2'd0
+`define EXCAUSE_ILLEGAL_INSTR 2'd1
+`define EXCAUSE_BREAKPOINT 2'd2
+`define EXCAUSE_ECALL 2'd3
 
 `endif
 

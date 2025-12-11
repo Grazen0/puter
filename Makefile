@@ -14,16 +14,25 @@ FW_BASE := ./firmware
 
 FW_SRC_DIRS := $(FW_BASE)/src
 
-FW_SRCS := $(shell find $(FW_SRC_DIRS) -name '*.c' -or -name '*.s')
+FW_SRCS := $(FW_BASE)/src/main.c \
+		   $(FW_BASE)/src/numeric.c \
+		   $(FW_BASE)/src/puter.c \
+		   $(FW_BASE)/src/riscv.c \
+		   $(FW_BASE)/src/riscv.s \
+		   $(FW_BASE)/src/startup.s
+
 FW_OBJS := $(FW_SRCS:%=$(BUILD_DIR)/%.o)
 FW_LINKER := $(FW_BASE)/data/linker.ld
 
-FW_INC_DIRS := $(shell find $(FW_SRC_DIRS) -type d)
+FW_INC_DIRS := $(FW_SRC_DIRS)
 FW_INC_FLAGS := $(addprefix -I,$(FW_INC_DIRS))
 
-CFLAGS := $(FW_INC_FLAGS) -march=rv32i_zicsr -mabi=ilp32 -std=c23 -O2 -g \
-		  -specs=nano.specs -nostartfiles -ffreestanding \
+override CFLAGS += $(FW_INC_FLAGS) -march=rv32i_zicsr -mabi=ilp32 \
+		  -std=c23 -specs=nano.specs -nostartfiles -ffreestanding \
+		  -g -Oz -ffunction-sections -fdata-sections \
 		  -Wall -Wextra -Wpedantic
+
+LDFLAGS := --no-warn-rwx-segments,--gc-sections
 
 CC := riscv32-none-elf-gcc
 OBJCOPY := riscv32-none-elf-objcopy
@@ -44,7 +53,10 @@ VCD_DUMPS := $(patsubst $(TB_DIR)/%.v,$(BUILD_DIR)/%.vcd,$(TBS))
 INC_DIRS := $(shell find ./include -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
-IVERILOG_FLAGS := -DIVERILOG
+override IVERILOG_FLAGS += -DIVERILOG -Wall
+
+FONT_SRC = ./data/unscii-16.hex
+FONT_TARGET = unscii-16.mem
 
 .PHONY: all clean run wave compdb firmware
 
@@ -82,7 +94,7 @@ $(BUILD_DIR)/%.s.o: %.s
 
 # Verilog =====================================================================
 
-$(BUILD_DIR)/%.out: $(TB_DIR)/%.v $(SRCS) $(BUILD_DIR)/$(FW_BASE)/$(FW_TARGET_MEM)
+$(BUILD_DIR)/%.out: $(TB_DIR)/%.v $(SRCS) $(BUILD_DIR)/$(FW_BASE)/$(FW_TARGET_MEM) $(BUILD_DIR)/$(FONT_TARGET)
 	mkdir -p $(dir $@)
 	iverilog $(INC_FLAGS) $(IVERILOG_FLAGS) -o $@ $< $(SRCS) 
 
@@ -90,6 +102,10 @@ $(BUILD_DIR)/%.vcd: $(BUILD_DIR)/%.out
 	mkdir -p $(dir $@)
 	vvp $(VVP_FLAGS) $<
 	mv dump.vcd $@
+
+$(BUILD_DIR)/$(FONT_TARGET): $(FONT_SRC)
+	mkdir -p $(dir $@)
+	./tools/extract_font.sh $< > $@
 
 run: $(BUILD_DIR)/$(TB).out
 	mkdir -p $(dir $(BUILD_DIR)/$(TB))

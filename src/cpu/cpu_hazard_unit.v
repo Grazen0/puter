@@ -1,4 +1,4 @@
-`default_nettype none
+`default_nettype none `timescale 1ns / 1ps
 
 `include "cpu_control.vh"
 `include "cpu_hazard_unit.vh"
@@ -7,13 +7,15 @@
 module cpu_hazard_unit (
     input wire [4:0] rs1_d,
     input wire [4:0] rs2_d,
+    input wire exception_d,
 
     input wire [ 4:0] rs1_e,
     input wire [ 4:0] rs2_e,
     input wire [ 4:0] rd_e,
     input wire [11:0] csrs_e,
-    input wire [ 1:0] pc_src_e,
+    input wire [ 2:0] pc_src_e,
     input wire [ 2:0] result_src_e,
+    input wire        csr_write_e,
 
     input wire        reg_write_m,
     input wire        csr_write_m,
@@ -61,10 +63,11 @@ module cpu_hazard_unit (
   end
 
   wire lw_stall = result_src_e == `RESULT_SRC_DATA && (rs1_d == rd_e || rs2_d == rd_e);
+  wire exception_stall = exception_d && (csr_write_e || csr_write_m);
 
-  assign stall_f = lw_stall;
-  assign stall_d = lw_stall;
+  assign stall_f = lw_stall || exception_stall;
+  assign stall_d = lw_stall || exception_stall;
 
   assign flush_d = pc_src_e != `PC_SRC_PC_PLUS_4;
-  assign flush_e = lw_stall || pc_src_e != `PC_SRC_PC_PLUS_4;
+  assign flush_e = lw_stall || exception_stall || pc_src_e != `PC_SRC_PC_PLUS_4;
 endmodule

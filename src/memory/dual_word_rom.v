@@ -1,4 +1,4 @@
-`default_nettype none
+`default_nettype none `timescale 1ns / 1ps
 
 module dual_word_rom #(
     parameter SIZE_WORDS  = 2 ** 13,
@@ -23,8 +23,6 @@ module dual_word_rom #(
   assign rdata_2 = data[word_addr_2] >> (8 * offset_2);
 
   initial begin
-    if (SOURCE_FILE != "") begin
-      $readmemh(SOURCE_FILE, data);
-    end
+    $readmemh(SOURCE_FILE, data);
   end
 endmodule

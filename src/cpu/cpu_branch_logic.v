@@ -1,20 +1,21 @@
-`default_nettype none
+`default_nettype none `timescale 1ns / 1ps
 
 `include "cpu_branch_logic.vh"
 `include "cpu_control.vh"
 
 module cpu_branch_logic (
     input wire jump,
-    input wire jump_src,
+    input wire [1:0] jump_src,
     input wire branch,
     input wire [2:0] branch_cond,
+    input wire exception,
 
     input wire alu_carry,
     input wire alu_overflow,
     input wire alu_zero,
     input wire alu_neg,
 
-    output reg [1:0] pc_src
+    output reg [2:0] pc_src
 );
   reg  branch_cond_val;
 
@@ -33,10 +34,14 @@ module cpu_branch_logic (
       default:          branch_cond_val = 1'bx;
     endcase
 
-    if (jump || (branch && branch_cond_val)) begin
+    if (exception) begin
+      pc_src = `PC_SRC_MTVEC;
+    end else if (jump || (branch && branch_cond_val)) begin
       case (jump_src)
         `JUMP_SRC_PC_TARGET: pc_src = `PC_SRC_PC_TARGET;
         `JUMP_SRC_ALU:       pc_src = `PC_SRC_ALU;
+        `JUMP_SRC_MTVEC:     pc_src = `PC_SRC_MTVEC;
+        `JUMP_SRC_MEPC:      pc_src = `PC_SRC_MEPC;
         default:             pc_src = 2'bxx;
       endcase
     end
