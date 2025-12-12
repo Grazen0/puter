@@ -3,38 +3,40 @@
 `include "cpu_csr_file.vh"
 `include "cpu_control.vh"
 
-module cpu_csr_file (
+module cpu_csr_file #(
+    parameter XLEN = 32
+) (
     input wire clk,
     input wire rst_n,
 
-    input  wire [11:0] raddr,
-    output reg  [31:0] rdata,
+    input wire [11:0] raddr,
+    output reg [XLEN-1:0] rdata,
 
-    input wire [11:0] waddr,
-    input wire [31:0] wdata,
-    input wire        wenable,
+    input wire [    11:0] waddr,
+    input wire [XLEN-1:0] wdata,
+    input wire            wenable,
 
     input wire bubble_w,
 
-    output reg [31:0] mtvec,
-    output reg [31:0] mepc,
+    output reg [XLEN-1:0] mtvec,
+    output reg [XLEN-1:0] mepc,
 
-    input wire        exception_w,
-    input wire [ 1:0] exception_cause_w,
-    input wire [31:0] pc_w,
+    input wire            exception_w,
+    input wire [     1:0] exception_cause_w,
+    input wire [XLEN-1:0] pc_w,
 
     output reg [1:0] priv
 );
   reg [1:0] priv_next;
 
   reg [63:0] mstatus, mstatus_next;
-  reg [31:0] mie, mie_next;
-  reg [31:0] mtvec_next;
+  reg [XLEN-1:0] mie, mie_next;
+  reg [XLEN-1:0] mtvec_next;
 
-  reg [31:0] mscratch, mscratch_next;
-  reg [31:0] mepc_next;
-  reg [31:0] mcause, mcause_next;
-  reg [31:0] mip, mip_next;
+  reg [XLEN-1:0] mscratch, mscratch_next;
+  reg [XLEN-1:0] mepc_next;
+  reg [XLEN-1:0] mcause, mcause_next;
+  reg [XLEN-1:0] mip, mip_next;
 
   reg [63:0] mcycle, mcycle_next;
   reg [63:0] minstret, minstret_next;
@@ -92,7 +94,7 @@ module cpu_csr_file (
         `EXCAUSE_ILLEGAL_INSTR:         mcause_next = {1'b0, 31'd2};
         `EXCAUSE_BREAKPOINT:            mcause_next = {1'b0, 31'd3};
         `EXCAUSE_ECALL:                 mcause_next = {1'b0, 31'd11};
-        default:                        mcause_next = {32{1'bx}};
+        default:                        mcause_next = {(XLEN - 1) {1'bx}};
       endcase
     end
 
@@ -132,8 +134,8 @@ module cpu_csr_file (
       mstatus[38]    <= 0;
       mstatus[37]    <= 0;
       mstatus[36]    <= 0;
-      mstatus[35:34] <= 2'd1;  // xlen = 32
-      mstatus[33:32] <= 2'd1;  // xlen = 32
+      mstatus[35:34] <= XLEN == 32 ? 2'd1 : 2'd2;
+      mstatus[33:32] <= XLEN == 32 ? 2'd1 : 2'd2;
       mstatus[17]    <= 0;
       mstatus[16:15] <= 0;
       mstatus[12:11] <= `PRIV_M;

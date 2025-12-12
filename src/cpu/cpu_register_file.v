@@ -1,16 +1,18 @@
 `default_nettype none `timescale 1ns / 1ps
 
-module cpu_register_file (
+module cpu_register_file #(
+    parameter XLEN = 32
+) (
     input wire clk,
 
-    input wire [4:0] a1,
-    input wire [4:0] a2,
-    input wire [4:0] a3,
-    input wire [31:0] wd3,
-    input wire we3,
+    input wire [     4:0] a1,
+    input wire [     4:0] a2,
+    input wire [     4:0] a3,
+    input wire [XLEN-1:0] wd3,
+    input wire            we3,
 
-    output wire [31:0] rd1,
-    output wire [31:0] rd2
+    output wire [XLEN-1:0] rd1,
+    output wire [XLEN-1:0] rd2
 );
   localparam REGS = 32;
 
@@ -28,7 +30,7 @@ module cpu_register_file (
   generate
     genvar idx;
     for (idx = 1; idx < REGS; idx = idx + 1) begin : g_register
-      wire [31:0] val = regs[idx];
+      wire [XLEN-1:0] val = regs[idx];
     end
   endgenerate
 endmodule
