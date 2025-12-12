@@ -59,9 +59,9 @@ module cpu_tb ();
   initial begin
     $dumpvars(0, cpu_tb);
 
-    clk   = 1;
+    clk   = 0;
     rst_n = 0;
-    #5 rst_n = 1;
+    #10 rst_n = 1;
 
     $display("");
 

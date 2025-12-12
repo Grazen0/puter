@@ -24,6 +24,7 @@ module cpu (
   wire stall_d;
   wire flush_d;
   wire flush_e;
+  wire flush_m;
 
   cpu_hazard_unit hazard_unit (
       .rs1_d(rs1_d),
@@ -57,21 +58,28 @@ module cpu (
       .stall_d(stall_d),
 
       .flush_d(flush_d),
-      .flush_e(flush_e)
+      .flush_e(flush_e),
+      .flush_m(flush_m),
+
+      .int_ack(int_ack)
   );
 
   // 1. Fetch
   reg [31:0] pc_next_f;
 
   always @(*) begin
-    case (pc_src_e)
-      `PC_SRC_PC_PLUS_4: pc_next_f = pc_plus_4_f;
-      `PC_SRC_PC_TARGET: pc_next_f = pc_target_e;
-      `PC_SRC_ALU:       pc_next_f = alu_result_e;
-      `PC_SRC_MTVEC:     pc_next_f = mtvec_e;
-      `PC_SRC_MEPC:      pc_next_f = mepc_e;
-      default:           pc_next_f = {32{1'bx}};
-    endcase
+    if (int_ack) begin
+      pc_next_f = mtvec_e;
+    end else begin
+      case (pc_src_e)
+        `PC_SRC_PC_PLUS_4: pc_next_f = pc_plus_4_f;
+        `PC_SRC_PC_TARGET: pc_next_f = pc_target_e;
+        `PC_SRC_ALU:       pc_next_f = alu_result_e;
+        `PC_SRC_MTVEC:     pc_next_f = mtvec_e;
+        `PC_SRC_MEPC:      pc_next_f = mepc_e;
+        default:           pc_next_f = {32{1'bx}};
+      endcase
+    end
   end
 
   reg [31:0] pc_f;
@@ -133,6 +141,7 @@ module cpu (
   wire        csr_write_d;
   wire        exception_d;
   wire [ 1:0] exception_cause_d;
+  wire        mret_d;
 
   cpu_control control (
       .op     (op_d),
@@ -155,7 +164,8 @@ module cpu (
       .illegal_instr   (illegal_instr_d),
       .csr_write       (csr_write_d),
       .exception       (exception_d),
-      .exception_cause (exception_cause_d)
+      .exception_cause (exception_cause_d),
+      .mret            (mret_d)
   );
 
   wire [31:0] rd1_d;
@@ -193,6 +203,7 @@ module cpu (
   wire [31:0] csrd_d;
   wire [31:0] mtvec_d;
   wire [31:0] mepc_d;
+  wire int_req;
 
   cpu_csr_file csr_file (
       .clk  (~clk),
@@ -212,41 +223,61 @@ module cpu (
 
       .exception_w      (exception_w),
       .exception_cause_w(exception_cause_w),
-      .pc_w             (pc_w)
+      .pc_w             (pc_w),
+      .mret_w           (mret_w),
+
+      .pc_f    (pc_f),
+      .pc_d    (pc_d),
+      .pc_e    (pc_e),
+      .bubble_d(bubble_d),
+      .bubble_e(bubble_e),
+
+      .int_req(int_req),
+      .int_ack(int_ack)
   );
 
+  reg int_req_buf;
+
+  always @(posedge clk) begin
+    if (!rst_n) int_req_buf <= 0;
+    else int_req_buf <= int_req;
+  end
+
+  wire        int_ack = int_req_buf & ~exception_w & ~mret_w & ~exception_m & ~mret_m;
+
   // 3. Execute
-  reg        bubble_e;
+  reg         bubble_e;
 
-  reg        reg_write_e;
-  reg [ 2:0] result_src_e;
-  reg [ 3:0] mem_write_e;
-  reg        jump_e;
-  reg        branch_e;
-  reg [ 3:0] alu_control_e;
-  reg        alu_src_a_e;
-  reg [ 1:0] alu_src_b_e;
-  reg [ 2:0] data_ext_control_e;
-  reg [ 1:0] jump_src_e;
-  reg [ 2:0] branch_cond_e;
-  reg        illegal_instr_e;
-  reg        csr_write_e;
-  reg        exception_e;
-  reg [ 1:0] exception_cause_e;
+  reg         reg_write_e;
+  reg  [ 2:0] result_src_e;
+  reg  [ 3:0] mem_write_e;
+  reg         jump_e;
+  reg         branch_e;
+  reg  [ 3:0] alu_control_e;
+  reg         alu_src_a_e;
+  reg  [ 1:0] alu_src_b_e;
+  reg  [ 2:0] data_ext_control_e;
+  reg  [ 1:0] jump_src_e;
+  reg  [ 2:0] branch_cond_e;
+  reg         illegal_instr_e;
+  reg         csr_write_e;
+  reg         exception_e;
+  reg  [ 1:0] exception_cause_e;
+  reg         mret_e;
 
-  reg [31:0] rd1_e;
-  reg [31:0] rd2_e;
-  reg [31:0] csrd_e;
-  reg [31:0] pc_e;
-  reg [ 4:0] rs1_e;
-  reg [ 4:0] rs2_e;
-  reg [11:0] csrs_e;
-  reg [ 4:0] rd_e;
-  reg [31:0] imm_ext_e;
-  reg [31:0] pc_plus_4_e;
+  reg  [31:0] rd1_e;
+  reg  [31:0] rd2_e;
+  reg  [31:0] csrd_e;
+  reg  [31:0] pc_e;
+  reg  [ 4:0] rs1_e;
+  reg  [ 4:0] rs2_e;
+  reg  [11:0] csrs_e;
+  reg  [ 4:0] rd_e;
+  reg  [31:0] imm_ext_e;
+  reg  [31:0] pc_plus_4_e;
 
-  reg [31:0] mtvec_e;
-  reg [31:0] mepc_e;
+  reg  [31:0] mtvec_e;
+  reg  [31:0] mepc_e;
 
   always @(posedge clk) begin
     if (!rst_n || flush_e) begin
@@ -267,6 +298,7 @@ module cpu (
       csr_write_e        <= 0;
       exception_e        <= 0;
       exception_cause_e  <= 2'bxx;
+      mret_e             <= 0;
 
       rd1_e              <= {32{1'bx}};
       rd2_e              <= {32{1'bx}};
@@ -299,6 +331,7 @@ module cpu (
       csr_write_e        <= csr_write_d;
       exception_e        <= exception_d;
       exception_cause_e  <= exception_cause_d;
+      mret_e             <= mret_d;
 
       rd1_e              <= rd1_d;
       rd2_e              <= rd2_d;
@@ -411,6 +444,7 @@ module cpu (
   reg         csr_write_m;
   reg         exception_m;
   reg  [ 1:0] exception_cause_m;
+  reg         mret_m;
 
   reg  [31:0] csrd_m;
   reg  [31:0] pc_m;
@@ -422,7 +456,7 @@ module cpu (
   reg  [31:0] pc_target_m;
 
   always @(posedge clk) begin
-    if (!rst_n) begin
+    if (!rst_n || flush_m) begin
       bubble_m           <= 1;
 
       reg_write_m        <= 0;
@@ -432,6 +466,7 @@ module cpu (
       csr_write_m        <= 0;
       exception_m        <= 0;
       exception_cause_m  <= 2'bxx;
+      mret_m             <= 0;
 
       csrd_m             <= {32{1'bx}};
       pc_m               <= {32{1'bx}};
@@ -450,6 +485,7 @@ module cpu (
       csr_write_m        <= csr_write_e;
       exception_m        <= exception_e;
       exception_cause_m  <= exception_cause_e;
+      mret_m             <= mret_e;
 
       csrd_m             <= csrd_fw_e;
       pc_m               <= pc_e;
@@ -494,6 +530,7 @@ module cpu (
   reg        csr_write_w;
   reg        exception_w;
   reg [ 1:0] exception_cause_w;
+  reg        mret_w;
 
   reg [31:0] pc_w;
   reg [31:0] alu_result_w;
@@ -513,6 +550,7 @@ module cpu (
       csr_write_w       <= 0;
       exception_w       <= 0;
       exception_cause_w <= 2'bxx;
+      mret_w            <= 0;
 
       pc_w              <= {32{1'bx}};
       alu_result_w      <= {32{1'bx}};
@@ -530,6 +568,7 @@ module cpu (
       csr_write_w       <= csr_write_m;
       exception_w       <= exception_m;
       exception_cause_w <= exception_cause_m;
+      mret_w            <= mret_m;
 
       pc_w              <= pc_m;
       alu_result_w      <= alu_result_m;

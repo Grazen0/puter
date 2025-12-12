@@ -35,7 +35,10 @@ module cpu_hazard_unit (
     output wire stall_d,
 
     output wire flush_d,
-    output wire flush_e
+    output wire flush_e,
+    output wire flush_m,
+
+    input wire int_ack
 );
   always @(*) begin
     forward_a_e   = `FORWARD_NONE;
@@ -62,12 +65,22 @@ module cpu_hazard_unit (
     end
   end
 
+  // occurs when the pc jumps to something other than pc + 4
+  wire jump_flush = pc_src_e != `PC_SRC_PC_PLUS_4;
+
+  // occurs when an instruction reads a register right after reading memory
+  // into it
   wire lw_stall = result_src_e == `RESULT_SRC_DATA && (rs1_d == rd_e || rs2_d == rd_e);
+
+  // occurs when an exception is about to occur, but we need to wait for the
+  // csr file to be up to date
   wire exception_stall = exception_d && (csr_write_e || csr_write_m);
 
-  assign stall_f = lw_stall || exception_stall;
-  assign stall_d = lw_stall || exception_stall;
+  // keep in mind that these take priority over stalls
+  assign flush_d = int_ack | jump_flush;
+  assign flush_e = int_ack | lw_stall | exception_stall | jump_flush;
+  assign flush_m = int_ack;
 
-  assign flush_d = pc_src_e != `PC_SRC_PC_PLUS_4;
-  assign flush_e = lw_stall || exception_stall || pc_src_e != `PC_SRC_PC_PLUS_4;
+  assign stall_f = lw_stall | exception_stall;
+  assign stall_d = lw_stall | exception_stall;
 endmodule

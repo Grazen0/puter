@@ -32,11 +32,16 @@ typedef enum {
 {
     const int mcause = read_mcause();
     const bool interrupt = (mcause & 0x8000'0000) != 0;
-
-    if (interrupt)
-        return;
-
     const int excode = mcause & 0x7FFF'FFFF;
+
+    if (interrupt) {
+        print("interrupt (excode = ");
+        print_int(excode);
+        print(")\n");
+
+        __asm__("csrc mip, 0x8");
+        return;
+    }
 
     switch (excode) {
     case MCAUSE_ILLEGAL_INSTR:
@@ -65,8 +70,8 @@ typedef enum {
         break;
 
     default:
-        print("Unknown trap (mcause = ");
-        print_int(mcause);
+        print("Unknown exception (excode = ");
+        print_int(excode);
         print(")\n");
         while (true) {
         }

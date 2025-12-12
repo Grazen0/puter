@@ -8,6 +8,8 @@ _start:
     la      t0, trap_handler
     csrw    mtvec, t0
 
+    j       skip
+
     # Initialize .data
     la      t0, _data_start
     la      t1, _data_end
@@ -32,6 +34,12 @@ clear_bss:
     addi    t0, t0, 4
     j       clear_bss
 bss_done:
+
+skip:
+    csrs    mstatus, 0x8 # Enable machine interrupts
+    csrs    mie, 0x8     # Enable MSIs
+
+    csrs    mip, 0x8     # Trigger an MSI
 
     call    __libc_init_array
     call    main

@@ -26,8 +26,10 @@ module plic_tb ();
   initial begin
     $dumpvars(0, plic_tb);
 
-    clk = 0;
+    clk   = 0;
     rst_n = 0;
+
+    #10 rst_n = 1;
 
     int_signal = 4'b0000;
     int_claim = 4'b0000;
@@ -37,7 +39,6 @@ module plic_tb ();
     plic.int_priority[2] = 3'd4;
     plic.int_priority[3] = 3'd1;
 
-    #10 rst_n = 1;
     #30 int_signal = 4'b1111;
 
     @(posedge int_pending);

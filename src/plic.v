@@ -54,6 +54,7 @@ module plic #(
     end
   endgenerate
 
+  reg [PRIORITY_WIDTH-1:0] int_threshold;
   reg [PORTS-1:0] int_pending;
   reg [PORTS-1:0] int_enable;
   reg [PORTS-1:0][PRIORITY_WIDTH-1:0] int_priority;
@@ -62,8 +63,9 @@ module plic #(
 
   always @(posedge clk) begin
     if (!rst_n) begin
-      int_pending <= {PORTS{1'b0}};
-      int_enable  <= {PORTS{1'b1}};  // TODO: set to 0 on reset
+      int_pending   <= {PORTS{1'b0}};
+      int_enable    <= {PORTS{1'b0}};  // TODO: set to 0 on reset
+      int_threshold <= 0;
     end else begin
       for (i2 = 0; i2 < PORTS; i2 = i2 + 1) begin
         if (irq[i2]) int_pending[i2] <= 1;
@@ -87,6 +89,6 @@ module plic #(
     end
   endgenerate
 
-  assign out_int_pending = max_priority[PORTS] != 0;
+  assign out_int_pending = max_priority[PORTS] > int_threshold;
   assign out_int_id = max_id[PORTS];
 endmodule

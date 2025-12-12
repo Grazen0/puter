@@ -20,4 +20,12 @@
 `define PRIV_S 2'd1
 `define PRIV_M 2'd3
 
+`define MSTATUS_SIE 1
+`define MSTATUS_MIE 3
+`define MSTATUS_SPIE 5
+`define MSTATUS_MPIE 7
+`define MSTATUS_SPP 8
+`define MSTATUS_MPP 12:11
+
+
 `endif

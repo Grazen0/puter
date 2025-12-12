@@ -26,7 +26,8 @@ module cpu_control (
     output reg       illegal_instr,
     output reg       csr_write,
     output reg       exception,
-    output reg [1:0] exception_cause
+    output reg [1:0] exception_cause,
+    output reg       mret
 );
   always @(*) begin
     reg_write       = 0;
@@ -44,6 +45,7 @@ module cpu_control (
     csr_write       = 0;
     exception       = 0;
     exception_cause = 2'bxx;
+    mret            = 0;
 
     case (op)
       7'b0000011: begin  // load
@@ -152,6 +154,7 @@ module cpu_control (
             12'h302: begin  // mret
               jump = 1;
               jump_src = `JUMP_SRC_MEPC;
+              mret = 1;
             end
             12'h105: begin  // wfi
               // Implemented as nop
