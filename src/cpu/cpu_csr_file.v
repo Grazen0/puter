@@ -35,11 +35,23 @@ module cpu_csr_file #(
     output reg [1:0] priv,
 
     output reg  int_req,
-    input  wire int_ack
+    input  wire int_ack,
+
+    input wire mti_pending,
+    input wire mei_pending
 );
   localparam MSI = 3;
   localparam MTI = 7;
   localparam MEI = 11;
+
+  localparam MCAUSE_INSTR_ADDR_MISALIGNED = {1'b0, 31'd0};
+  localparam MCAUSE_ILLEGAL_INSTR = {1'b0, 31'd2};
+  localparam MCAUSE_BREAKPOINT = {1'b0, 31'd3};
+  localparam MCAUSE_ECALL = {1'b0, 31'd11};
+
+  localparam MCAUSE_MSI = {1'b1, 31'd3};
+  localparam MCAUSE_MTI = {1'b1, 31'd7};
+  localparam MCAUSE_MEI = {1'b1, 31'd11};
 
   reg [1:0] priv_next;
 
@@ -50,12 +62,18 @@ module cpu_csr_file #(
   reg [XLEN-1:0] mscratch, mscratch_next;
   reg [XLEN-1:0] mepc_next;
   reg [XLEN-1:0] mcause, mcause_next;
-  reg [XLEN-1:0] mip, mip_next;
+  reg [XLEN-1:0] mip;
 
   reg [63:0] mcycle, mcycle_next;
   reg [63:0] minstret, minstret_next;
 
+  wire [XLEN-1:0] mcond = mip & mie;
+
   always @(*) begin
+    mip           = {XLEN{1'b0}};
+    mip[MTI]      = mti_pending;
+    mip[MEI]      = mei_pending;
+
     priv_next     = priv;
 
     mstatus_next  = mstatus;
@@ -65,7 +83,6 @@ module cpu_csr_file #(
     mscratch_next = mscratch;
     mepc_next     = mepc;
     mcause_next   = mcause;
-    mip_next      = mip;
 
     mcycle_next   = mcycle;
     minstret_next = minstret;
@@ -80,7 +97,6 @@ module cpu_csr_file #(
         `CSR_MSCRATCH: mscratch_next = wdata;
         `CSR_MEPC:     mepc_next = wdata;
         `CSR_MCAUSE:   mcause_next = wdata;
-        `CSR_MIP:      mip_next = wdata;
 
         `CSR_MCYCLE:    mcycle_next[31:0] = wdata;
         `CSR_MCYCLEH:   mcycle_next[63:32] = wdata;
@@ -99,10 +115,8 @@ module cpu_csr_file #(
 
     int_req = 0;
 
-    if (mstatus[`MSTATUS_MIE]) begin
-      if (mip[MSI] & mie[MSI]) begin
-        int_req = 1;
-      end
+    if (mstatus[`MSTATUS_MIE] && (mcond[MSI] || mcond[MTI] || mcond[MEI])) begin
+      int_req = 1;
     end
 
     if (exception_w || int_ack) begin
@@ -116,31 +130,35 @@ module cpu_csr_file #(
         mepc_next = pc_w;
 
         case (exception_cause_w)
-          `EXCAUSE_INSTR_ADDR_MISALIGNED: mcause_next = {1'b0, 31'd0};
-          `EXCAUSE_ILLEGAL_INSTR:         mcause_next = {1'b0, 31'd2};
-          `EXCAUSE_BREAKPOINT:            mcause_next = {1'b0, 31'd3};
-          `EXCAUSE_ECALL:                 mcause_next = {1'b0, 31'd11};
-          default:                        mcause_next = {(XLEN - 1) {1'bx}};
+          `EXCAUSE_INSTR_ADDR_MISALIGNED: mcause_next = MCAUSE_INSTR_ADDR_MISALIGNED;
+          `EXCAUSE_ILLEGAL_INSTR:         mcause_next = MCAUSE_ILLEGAL_INSTR;
+          `EXCAUSE_BREAKPOINT:            mcause_next = MCAUSE_BREAKPOINT;
+          `EXCAUSE_ECALL:                 mcause_next = MCAUSE_ECALL;
+          default:                        mcause_next = {XLEN{1'bx}};
         endcase
       end else begin
+        mstatus_next[31] = 1;
+
         // acknowledging interrupt
         mepc_next = !bubble_e ? pc_e : !bubble_d ? pc_d : pc_f;
-        mcause_next = {1'b1, 31'd3};  // MSI
+        mcause_next = mcond[MEI] ? MCAUSE_MEI : mcond[MSI] ? MCAUSE_MSI : MCAUSE_MTI;
 
         int_req = 0;  // avoid an int acknowledge on the next cycle
       end
     end else if (mret_w) begin
-      mstatus_next[`MSTATUS_MIE]  = mstatus[`MSTATUS_MPIE];
+      mstatus_next[31]            = 0;
+
+      mstatus_next[`MSTATUS_MIE]  = 1;  // TODO: change back to mstatus[`MSTATUS_MPIE]
       mstatus_next[`MSTATUS_MPIE] = 1;
       priv_next                   = mstatus[`MSTATUS_MPP];
     end
 
     // read-only mstatus fields
-    mstatus_next[37]    <= 0;
-    mstatus_next[36]    <= 0;
-    mstatus_next[35:34] <= XLEN == 32 ? 2'd1 : 2'd2;
-    mstatus_next[33:32] <= XLEN == 32 ? 2'd1 : 2'd2;
-    mstatus_next[16:15] <= 0;
+    mstatus_next[37]    = 0;
+    mstatus_next[36]    = 0;
+    mstatus_next[35:34] = XLEN == 32 ? 2'd1 : 2'd2;
+    mstatus_next[33:32] = XLEN == 32 ? 2'd1 : 2'd2;
+    mstatus_next[16:15] = 0;
 
     case (raddr)
       `CSR_MSTATUS:  rdata = mstatus[31:0];
@@ -177,8 +195,6 @@ module cpu_csr_file #(
       mstatus[`MSTATUS_MIE] <= 0;
       mie                   <= {XLEN{1'b0}};
 
-      mip                   <= {XLEN{1'b0}};
-
       mcycle                <= 0;
     end else begin
       priv     <= priv_next;
@@ -190,7 +206,6 @@ module cpu_csr_file #(
       mscratch <= mscratch_next;
       mepc     <= mepc_next;
       mcause   <= mcause_next;
-      mip      <= mip_next;
 
       mcycle   <= mcycle_next;
       minstret <= minstret_next;

@@ -4,7 +4,9 @@
 `include "cpu_control.vh"
 `include "cpu_hazard_unit.vh"
 
-module cpu (
+module cpu #(
+    parameter MEI_PORTS = 4
+) (
     input wire clk,
     input wire rst_n,
 
@@ -14,7 +16,10 @@ module cpu (
     output wire [31:0] data_addr,
     output wire [31:0] data_wdata,
     output wire [ 3:0] data_wenable,
-    input  wire [31:0] data_rdata
+    input  wire [31:0] data_rdata,
+
+    input wire mti_pending,
+    input wire mei_pending
 );
 
   wire [1:0] forward_a_e;
@@ -69,14 +74,14 @@ module cpu (
 
   always @(*) begin
     if (int_ack) begin
-      pc_next_f = mtvec_e;
+      pc_next_f = !bubble_e ? mtvec_e : mtvec_d;
     end else begin
       case (pc_src_e)
         `PC_SRC_PC_PLUS_4: pc_next_f = pc_plus_4_f;
         `PC_SRC_PC_TARGET: pc_next_f = pc_target_e;
         `PC_SRC_ALU:       pc_next_f = alu_result_e;
-        `PC_SRC_MTVEC:     pc_next_f = mtvec_e;
-        `PC_SRC_MEPC:      pc_next_f = mepc_e;
+        `PC_SRC_MTVEC:     pc_next_f = !bubble_e ? mtvec_e : mtvec_d;
+        `PC_SRC_MEPC:      pc_next_f = !bubble_e ? mepc_e : mepc_d;
         default:           pc_next_f = {32{1'bx}};
       endcase
     end
@@ -137,7 +142,6 @@ module cpu (
   wire [ 2:0] data_ext_control_d;
   wire [ 1:0] jump_src_d;
   wire [ 2:0] branch_cond_d;
-  wire        illegal_instr_d;
   wire        csr_write_d;
   wire        exception_d;
   wire [ 1:0] exception_cause_d;
@@ -161,7 +165,6 @@ module cpu (
       .data_ext_control(data_ext_control_d),
       .jump_src        (jump_src_d),
       .branch_cond     (branch_cond_d),
-      .illegal_instr   (illegal_instr_d),
       .csr_write       (csr_write_d),
       .exception       (exception_d),
       .exception_cause (exception_cause_d),
@@ -233,7 +236,10 @@ module cpu (
       .bubble_e(bubble_e),
 
       .int_req(int_req),
-      .int_ack(int_ack)
+      .int_ack(int_ack),
+
+      .mti_pending(mti_pending),
+      .mei_pending(mei_pending)
   );
 
   reg int_req_buf;
@@ -259,7 +265,6 @@ module cpu (
   reg  [ 2:0] data_ext_control_e;
   reg  [ 1:0] jump_src_e;
   reg  [ 2:0] branch_cond_e;
-  reg         illegal_instr_e;
   reg         csr_write_e;
   reg         exception_e;
   reg  [ 1:0] exception_cause_e;
@@ -294,7 +299,6 @@ module cpu (
       data_ext_control_e <= 3'bxxx;
       jump_src_e         <= 0;
       branch_cond_e      <= 3'bxxx;
-      illegal_instr_e    <= 0;
       csr_write_e        <= 0;
       exception_e        <= 0;
       exception_cause_e  <= 2'bxx;
@@ -327,7 +331,6 @@ module cpu (
       data_ext_control_e <= data_ext_control_d;
       jump_src_e         <= jump_src_d;
       branch_cond_e      <= branch_cond_d;
-      illegal_instr_e    <= illegal_instr_d;
       csr_write_e        <= csr_write_d;
       exception_e        <= exception_d;
       exception_cause_e  <= exception_cause_d;

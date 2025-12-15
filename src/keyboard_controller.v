@@ -34,7 +34,7 @@ module keyboard_controller (
         if (~ps2_data) begin
           state_next   = S_READ_BYTE;
           bit_ctr_next = 0;
-          parity_next  = 0;
+          parity_next  = 1;
           valid_next   = 0;
         end
       end
@@ -48,7 +48,6 @@ module keyboard_controller (
         end
       end
       S_READ_PARITY: begin
-        valid_next = 1;
         state_next = parity == ps2_data ? S_READ_STOP : S_IDLE;
       end
       S_READ_STOP: begin
@@ -58,8 +57,7 @@ module keyboard_controller (
         end else begin
           state_next   = S_READ_BYTE;
           bit_ctr_next = 0;
-          parity_next  = 0;
-          valid_next   = 0;
+          parity_next  = 1;
         end
       end
       default: state_next = S_IDLE;

@@ -8,6 +8,17 @@ static size_t tram_idx;
 
 static constexpr size_t TAB_WIDTH = 4;
 
+static inline void scroll(void)
+{
+    for (size_t i = 0; i < SCREEN_ROWS - 1; ++i) {
+        for (size_t j = 0; j < SCREEN_COLS; ++j)
+            TRAM[(i * SCREEN_COLS) + j] = TRAM[((i + 1) * SCREEN_COLS) + j];
+    }
+
+    for (size_t j = 0; j < SCREEN_COLS; ++j)
+        TRAM[((SCREEN_ROWS - 1) * SCREEN_COLS) + j] = 0;
+}
+
 static inline void print_char(const char ch)
 {
 #ifdef DEBUG
@@ -31,6 +42,11 @@ static inline void print_char(const char ch)
 
     default:
         TRAM[tram_idx++] = ch;
+    }
+
+    if (tram_idx >= TRAM_SIZE) {
+        scroll();
+        tram_idx = (SCREEN_ROWS - 1) * SCREEN_COLS;
     }
 }
 
@@ -83,6 +99,6 @@ void print_hex(const u32 n)
 {
     for (int i = 28; i >= 0; i -= 4) {
         const u8 nib = (n >> i) & 0xF;
-        print_char(nib < 10 ? '0' + nib : 'A' + nib);
+        print_char(nib < 10 ? '0' + nib : 'A' + (nib - 10));
     }
 }

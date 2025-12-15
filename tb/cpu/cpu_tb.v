@@ -45,7 +45,10 @@ module cpu_tb ();
       .data_addr   (data_addr),
       .data_wdata  (data_wdata),
       .data_wenable(data_wenable),
-      .data_rdata  (data_rdata)
+      .data_rdata  (data_rdata),
+
+      .mti_pending(1'b0),
+      .mei_pending(1'b0)
   );
 
   always @(posedge clk) begin

@@ -3,17 +3,27 @@
 module puter (
     input wire sys_clk,
     input wire vga_clk,
+    input wire rt_clk,
     input wire rst_n,
 
     output wire [3:0] vga_red,
     output wire [3:0] vga_green,
     output wire [3:0] vga_blue,
     output wire h_sync,
-    output wire v_sync
+    output wire v_sync,
+
+    input wire ps2_clk,
+    input wire ps2_data
 );
-  localparam DATA_SEL_ROM = 2'd0;
-  localparam DATA_SEL_RAM = 2'd1;
-  localparam DATA_SEL_TRAM = 2'd2;
+  localparam MEI_PORTS = 2;
+
+  localparam DATA_SEL_ROM = 3'd0;
+  localparam DATA_SEL_RAM = 3'd1;
+  localparam DATA_SEL_TRAM = 3'd2;
+  localparam DATA_SEL_RTC = 3'd3;
+  localparam DATA_SEL_PLIC = 3'd4;
+  localparam DATA_SEL_MEI_ID = 3'd5;
+  localparam DATA_SEL_KEYBOARD_DATA = 3'd6;
 
   wire [31:0] instr_addr;
   wire [31:0] instr_rdata;
@@ -23,7 +33,9 @@ module puter (
   wire [ 3:0] data_wenable;
   reg  [31:0] data_rdata;
 
-  cpu cpu (
+  cpu #(
+      .MEI_PORTS(MEI_PORTS)
+  ) cpu (
       .clk  (sys_clk),
       .rst_n(rst_n),
 
@@ -33,24 +45,35 @@ module puter (
       .data_addr   (data_addr),
       .data_wdata  (data_wdata),
       .data_wenable(data_wenable),
-      .data_rdata  (data_rdata)
+      .data_rdata  (data_rdata),
+
+      .mti_pending(mti_pending),
+      .mei_pending(mei_pending)
   );
 
-  reg [1:0] data_sel;
+  reg [2:0] data_sel;
 
   always @(*) begin
-    casez (data_addr[31:30])
-      2'b0z:   data_sel = DATA_SEL_ROM;
-      2'b10:   data_sel = DATA_SEL_RAM;
-      2'b11:   data_sel = DATA_SEL_TRAM;
-      default: data_sel = {32{1'bx}};
+    casez (data_addr[31:27])
+      5'b0zzz_z: data_sel = DATA_SEL_ROM;
+      5'b10zz_z: data_sel = DATA_SEL_RAM;
+      5'b110z_z: data_sel = DATA_SEL_TRAM;
+      5'b1110_0: data_sel = DATA_SEL_RTC;
+      5'b1110_1: data_sel = DATA_SEL_KEYBOARD_DATA;
+      5'b1111_0: data_sel = DATA_SEL_PLIC;
+      5'b1111_1: data_sel = DATA_SEL_MEI_ID;
+      default:   data_sel = {32{1'bx}};
     endcase
 
     case (data_sel)
-      DATA_SEL_ROM:  data_rdata = rom_rdata;
-      DATA_SEL_RAM:  data_rdata = ram_rdata;
-      DATA_SEL_TRAM: data_rdata = tram_rdata;
-      default:       data_rdata = {32{1'bx}};
+      DATA_SEL_ROM:           data_rdata = rom_rdata;
+      DATA_SEL_RAM:           data_rdata = ram_rdata;
+      DATA_SEL_TRAM:          data_rdata = tram_rdata;
+      DATA_SEL_RTC:           data_rdata = rtc_rdata;
+      DATA_SEL_PLIC:          data_rdata = plic_rdata;
+      DATA_SEL_MEI_ID:        data_rdata = mei_id;
+      DATA_SEL_KEYBOARD_DATA: data_rdata = keyboard_data;
+      default:                data_rdata = {32{1'bx}};
     endcase
   end
 
@@ -94,5 +117,59 @@ module puter (
       .vga_blue (vga_blue),
       .h_sync   (h_sync),
       .v_sync   (v_sync)
+  );
+
+  wire [31:0] rtc_rdata;
+  wire mti_pending;
+
+  rt_counter rt_counter (
+      .clk(rt_clk),
+      .sys_clk(sys_clk),
+      .rst_n(rst_n),
+
+      .reg_sel(data_addr[3]),
+      .h_sel  (data_addr[2]),
+      .wdata  (data_wdata),
+      .wenable(|data_wenable && data_sel == DATA_SEL_RTC),
+      .rdata  (rtc_rdata),
+
+      .int_pending(mti_pending)
+  );
+
+  localparam PLIC_PRIORITY_WIDTH = $clog2(MEI_PORTS + 1);
+
+  wire mei_pending;
+  wire mei_id;
+  wire [PLIC_PRIORITY_WIDTH-1:0] plic_rdata;
+
+  plic #(
+      .PORTS(MEI_PORTS)
+  ) plic (
+      .clk  (sys_clk),
+      .rst_n(rst_n),
+
+      .port_sel(data_addr[0]),
+      .action_sel(data_addr[2:1]),
+      .wdata(data_wdata[PLIC_PRIORITY_WIDTH-1:0]),
+      .wenable(|data_wenable && data_sel == DATA_SEL_PLIC),
+      .rdata(plic_rdata),
+
+      .int_signal({1'b0, keyboard_valid}),
+
+      .out_int_pending(mei_pending),
+      .out_int_id     (mei_id)
+  );
+
+  wire [7:0] keyboard_data;
+  wire keyboard_valid;
+
+  keyboard_controller keyboard_controller (
+      .rst_n(rst_n),
+
+      .ps2_clk (ps2_clk),
+      .ps2_data(ps2_data),
+
+      .data (keyboard_data),
+      .valid(keyboard_valid)
   );
 endmodule

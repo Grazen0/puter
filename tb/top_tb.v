@@ -27,19 +27,58 @@ module top_tb ();
   always @(posedge top.sys_clk) begin
     if (|top.puter.data_wenable && top.puter.data_addr == 32'h1000_0000) begin
       $write("%c", top.puter.data_wdata);
+      $fflush();
     end
   end
+
+
+  task send_scancode(input reg [7:0] scancode);
+    integer i;
+    reg parity;
+
+    begin
+      ps2_data = 0;
+      #5 ps2_clk = 0;
+      #5 ps2_clk = 1;
+
+      parity = 1;
+
+      for (i = 0; i < 8; i = i + 1) begin
+        ps2_data = scancode[i];
+        #5 ps2_clk = 0;
+        #5 ps2_clk = 1;
+
+        parity = parity ^ scancode[i];
+      end
+
+      ps2_data = parity;
+      #5 ps2_clk = 0;
+      #5 ps2_clk = 1;
+
+      ps2_data = 1;
+      #5 ps2_clk = 0;
+      #5 ps2_clk = 1;
+    end
+  endtask
 
   initial begin
     $dumpvars(0, top_tb);
 
-    clk   = 1;
+    ps2_clk = 1;
+
+    clk = 1;
     rst_n = 0;
     #100 rst_n = 1;
 
     $display("");
 
-    #1_000_000;
+    #500_000;
+
+    send_scancode(8'h15);
+    #1300;
+    // send_scancode(8'h69);
+
+    #500_000;
     $display("");
     $finish();
   end

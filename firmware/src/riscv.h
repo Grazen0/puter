@@ -1,14 +1,21 @@
 #ifndef FIRMWARE_RISCV_H
 #define FIRMWARE_RISCV_H
 
+#include "numeric.h"
+#include <stdint.h>
+
 char *read_sp(void);
 
-int read_mcycle(void);
+u32 read_mstatus(void);
 
-int read_mcause(void);
+u64 read_mcycle(void);
 
-int read_mepc(void);
+u32 read_mcause(void);
+
+uintptr_t read_mepc(void);
 
 void inc_mepc(void);
+
+void enable_mti(void);
 
 #endif

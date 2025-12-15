@@ -11,9 +11,7 @@ module top (
     output wire v_sync,
 
     input wire ps2_data,
-    input wire ps2_clk,
-
-    output wire [15:0] led
+    input wire ps2_clk
 );
 
   wire sys_clk;
@@ -39,7 +37,7 @@ module top (
   MMCME2_BASE #(
       .CLKIN1_PERIOD(10.0),  // 100 MHz input
       .CLKFBOUT_MULT_F(8.0),
-      .CLKOUT0_DIVIDE_F(16.0)  // 100 * 8 / 16 = 50 MHz
+      .CLKOUT0_DIVIDE_F(32.0)  // 100 * 8 / 32 = 25 MHz
   ) sys_mmcm (
       .CLKIN1  (clk),
       .CLKFBIN (sys_clkfb),
@@ -66,27 +64,16 @@ module top (
   puter puter (
       .sys_clk(sys_clk),
       .vga_clk(vga_clk),
+      .rt_clk (clk),
       .rst_n  (rst_n),
 
       .vga_red  (vga_red),
       .vga_green(vga_green),
       .vga_blue (vga_blue),
       .h_sync   (h_sync),
-      .v_sync   (v_sync)
-  );
-
-  wire [7:0] keyboard_data;
-  wire keyboard_valid;
-
-  keyboard_controller keyboard_controller (
-      .rst_n(rst_n),
+      .v_sync   (v_sync),
 
       .ps2_clk (ps2_clk),
-      .ps2_data(ps2_data),
-
-      .data (keyboard_data),
-      .valid(keyboard_valid)
+      .ps2_data(ps2_data)
   );
-
-  assign led = {keyboard_valid, 7'b0000000, keyboard_data};
 endmodule

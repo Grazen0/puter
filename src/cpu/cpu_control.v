@@ -30,22 +30,23 @@ module cpu_control (
     output reg       mret
 );
   always @(*) begin
-    reg_write       = 0;
-    result_src      = `RESULT_SRC_ALU;
-    mem_write       = 4'b0000;
-    jump            = 0;
-    branch          = 0;
-    alu_control     = 4'bxxxx;
-    alu_src_a       = 1'bx;
-    alu_src_b       = 2'bxx;
-    imm_src         = 3'bxxx;
-    jump_src        = 1'bx;
-    branch_cond     = 3'bxxx;
-    illegal_instr   = 0;
-    csr_write       = 0;
-    exception       = 0;
-    exception_cause = 2'bxx;
-    mret            = 0;
+    reg_write        = 0;
+    result_src       = `RESULT_SRC_ALU;
+    mem_write        = 4'b0000;
+    jump             = 0;
+    branch           = 0;
+    alu_control      = 4'bxxxx;
+    alu_src_a        = 1'bx;
+    alu_src_b        = 2'bxx;
+    imm_src          = 3'bxxx;
+    jump_src         = 1'bx;
+    branch_cond      = 3'bxxx;
+    illegal_instr    = 0;
+    csr_write        = 0;
+    exception        = 0;
+    exception_cause  = 2'bxx;
+    mret             = 0;
+    data_ext_control = 3'bxxx;
 
     case (op)
       7'b0000011: begin  // load
@@ -137,20 +138,17 @@ module cpu_control (
 
         if (funct3 == 3'b000) begin
           case (funct12)
-            12'h000: begin  // ecall
-              exception = 1;
-              exception_cause = `EXCAUSE_ECALL;
-            end
-            12'h001: begin  // ebreak
-              exception = 1;
-              exception_cause = `EXCAUSE_BREAKPOINT;
-            end
-            12'h002: begin  // uret
-              $display("uret");
-            end
-            12'h102: begin  // sret
-              $display("sret");
-            end
+            // 12'h000: begin  // ecall
+            //   exception = 1;
+            //   exception_cause = `EXCAUSE_ECALL;
+            // end
+            // 12'h001: begin  // ebreak
+            //   exception = 1;
+            //   exception_cause = `EXCAUSE_BREAKPOINT;
+            // end
+            // 12'h102: begin  // sret
+            //   $display("sret");
+            // end
             12'h302: begin  // mret
               jump = 1;
               jump_src = `JUMP_SRC_MEPC;
