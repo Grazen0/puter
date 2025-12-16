@@ -31,7 +31,7 @@ inc_mepc:
     ret
 
 enable_mti:
-    li      t0, 0x800
+    li      t0, 0x880
     csrs    mie, t0
     csrs    mstatus, 0x8
     ret

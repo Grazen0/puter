@@ -5,18 +5,19 @@
 `include "cpu_hazard_unit.vh"
 
 module cpu #(
+    parameter XLEN = 32,
     parameter MEI_PORTS = 4
 ) (
     input wire clk,
     input wire rst_n,
 
-    output wire [31:0] instr_addr,
-    input  wire [31:0] instr_data,
+    output wire [XLEN-1:0] instr_addr,
+    input  wire [XLEN-1:0] instr_data,
 
-    output wire [31:0] data_addr,
-    output wire [31:0] data_wdata,
-    output wire [ 3:0] data_wenable,
-    input  wire [31:0] data_rdata,
+    output wire [XLEN-1:0] data_addr,
+    output wire [XLEN-1:0] data_wdata,
+    output wire [     3:0] data_wenable,
+    input  wire [XLEN-1:0] data_rdata,
 
     input wire mti_pending,
     input wire mei_pending
@@ -24,7 +25,6 @@ module cpu #(
 
   wire [1:0] forward_a_e;
   wire [1:0] forward_b_e;
-  wire [1:0] forward_csr_e;
   wire stall_f;
   wire stall_d;
   wire flush_d;
@@ -55,9 +55,8 @@ module cpu #(
       .rd_w(rd_w),
       .csrs_w(csrs_w),
 
-      .forward_a_e  (forward_a_e),
-      .forward_b_e  (forward_b_e),
-      .forward_csr_e(forward_csr_e),
+      .forward_a_e(forward_a_e),
+      .forward_b_e(forward_b_e),
 
       .stall_f(stall_f),
       .stall_d(stall_d),
@@ -70,24 +69,24 @@ module cpu #(
   );
 
   // 1. Fetch
-  reg [31:0] pc_next_f;
+  reg [XLEN-1:0] pc_next_f;
 
   always @(*) begin
     if (int_ack) begin
-      pc_next_f = !bubble_e ? mtvec_e : mtvec_d;
+      pc_next_f = mtvec_d;
     end else begin
       case (pc_src_e)
         `PC_SRC_PC_PLUS_4: pc_next_f = pc_plus_4_f;
         `PC_SRC_PC_TARGET: pc_next_f = pc_target_e;
         `PC_SRC_ALU:       pc_next_f = alu_result_e;
-        `PC_SRC_MTVEC:     pc_next_f = !bubble_e ? mtvec_e : mtvec_d;
-        `PC_SRC_MEPC:      pc_next_f = !bubble_e ? mepc_e : mepc_d;
-        default:           pc_next_f = {32{1'bx}};
+        `PC_SRC_MTVEC:     pc_next_f = mtvec_e;
+        `PC_SRC_MEPC:      pc_next_f = mepc_e;
+        default:           pc_next_f = {XLEN{1'bx}};
       endcase
     end
   end
 
-  reg [31:0] pc_f;
+  reg [XLEN-1:0] pc_f;
 
   always @(posedge clk) begin
     if (!rst_n) begin
@@ -98,24 +97,24 @@ module cpu #(
   end
 
   assign instr_addr = pc_f;
-  wire [31:0] instr_f = instr_data;
+  wire [XLEN-1:0] instr_f = instr_data;
 
-  wire [31:0] pc_plus_4_f = pc_f + 4;
+  wire [XLEN-1:0] pc_plus_4_f = pc_f + 4;
 
   // 2. Decode
   reg bubble_d;
 
-  reg [31:0] instr_d;
-  reg [31:0] pc_d;
-  reg [31:0] pc_plus_4_d;
+  reg [XLEN-1:0] instr_d;
+  reg [XLEN-1:0] pc_d;
+  reg [XLEN-1:0] pc_plus_4_d;
 
   always @(posedge clk) begin
     if (!rst_n || flush_d) begin
       bubble_d    <= 1;
 
       instr_d     <= 32'h0000_0013;  // nop
-      pc_d        <= {32{1'bx}};
-      pc_plus_4_d <= {32{1'bx}};
+      pc_d        <= {XLEN{1'bx}};
+      pc_plus_4_d <= {XLEN{1'bx}};
     end else if (!stall_d) begin
       bubble_d    <= 0;
 
@@ -171,15 +170,17 @@ module cpu #(
       .mret            (mret_d)
   );
 
-  wire [31:0] rd1_d;
-  wire [31:0] rd2_d;
+  wire [XLEN-1:0] rd1_d;
+  wire [XLEN-1:0] rd2_d;
 
 
-  wire [ 4:0] rs1_d = instr_d[19:15];
-  wire [ 4:0] rs2_d = instr_d[24:20];
-  wire [ 4:0] rd_d = instr_d[11:7];
+  wire [4:0] rs1_d = instr_d[19:15];
+  wire [4:0] rs2_d = instr_d[24:20];
+  wire [4:0] rd_d = instr_d[11:7];
 
-  cpu_register_file reg_file (
+  cpu_register_file #(
+      .XLEN(XLEN)
+  ) reg_file (
       .clk(~clk),
 
       .a1(rs1_d),
@@ -193,22 +194,26 @@ module cpu #(
       .we3(reg_write_w)
   );
 
-  wire [31:0] imm_ext_d;
+  wire [XLEN-1:0] imm_ext_d;
 
-  cpu_imm_extend imm_ext (
-      .data(instr_d[31:7]),
+  cpu_imm_extend #(
+      .XLEN(XLEN)
+  ) imm_ext (
+      .data   (instr_d[31:7]),
       .imm_src(imm_src_d),
       .imm_ext(imm_ext_d)
   );
 
   wire [11:0] csrs_d = instr_d[31:20];
 
-  wire [31:0] csrd_d;
-  wire [31:0] mtvec_d;
-  wire [31:0] mepc_d;
+  wire [XLEN-1:0] csrd_d;
+  wire [XLEN-1:0] mtvec_d;
+  wire [XLEN-1:0] mepc_d;
   wire int_req;
 
-  cpu_csr_file csr_file (
+  cpu_csr_file #(
+      .XLEN(XLEN)
+  ) csr_file (
       .clk  (~clk),
       .rst_n(rst_n),
 
@@ -249,40 +254,43 @@ module cpu #(
     else int_req_buf <= int_req;
   end
 
-  wire        int_ack = int_req_buf & ~exception_w & ~mret_w & ~exception_m & ~mret_m;
+  wire int_ack = int_req_buf &
+    ~exception_w & ~mret_w &
+    ~exception_m & ~mret_m &
+    ~exception_e & ~mret_e;
 
   // 3. Execute
-  reg         bubble_e;
+  reg bubble_e;
 
-  reg         reg_write_e;
-  reg  [ 2:0] result_src_e;
-  reg  [ 3:0] mem_write_e;
-  reg         jump_e;
-  reg         branch_e;
-  reg  [ 3:0] alu_control_e;
-  reg         alu_src_a_e;
-  reg  [ 1:0] alu_src_b_e;
-  reg  [ 2:0] data_ext_control_e;
-  reg  [ 1:0] jump_src_e;
-  reg  [ 2:0] branch_cond_e;
-  reg         csr_write_e;
-  reg         exception_e;
-  reg  [ 1:0] exception_cause_e;
-  reg         mret_e;
+  reg reg_write_e;
+  reg [2:0] result_src_e;
+  reg [3:0] mem_write_e;
+  reg jump_e;
+  reg branch_e;
+  reg [3:0] alu_control_e;
+  reg alu_src_a_e;
+  reg [1:0] alu_src_b_e;
+  reg [2:0] data_ext_control_e;
+  reg [1:0] jump_src_e;
+  reg [2:0] branch_cond_e;
+  reg csr_write_e;
+  reg exception_e;
+  reg [1:0] exception_cause_e;
+  reg mret_e;
 
-  reg  [31:0] rd1_e;
-  reg  [31:0] rd2_e;
-  reg  [31:0] csrd_e;
-  reg  [31:0] pc_e;
-  reg  [ 4:0] rs1_e;
-  reg  [ 4:0] rs2_e;
-  reg  [11:0] csrs_e;
-  reg  [ 4:0] rd_e;
-  reg  [31:0] imm_ext_e;
-  reg  [31:0] pc_plus_4_e;
+  reg [XLEN-1:0] rd1_e;
+  reg [XLEN-1:0] rd2_e;
+  reg [XLEN-1:0] csrd_e;
+  reg [XLEN-1:0] pc_e;
+  reg [4:0] rs1_e;
+  reg [4:0] rs2_e;
+  reg [11:0] csrs_e;
+  reg [4:0] rd_e;
+  reg [XLEN-1:0] imm_ext_e;
+  reg [XLEN-1:0] pc_plus_4_e;
 
-  reg  [31:0] mtvec_e;
-  reg  [31:0] mepc_e;
+  reg [XLEN-1:0] mtvec_e;
+  reg [XLEN-1:0] mepc_e;
 
   always @(posedge clk) begin
     if (!rst_n || flush_e) begin
@@ -304,19 +312,19 @@ module cpu #(
       exception_cause_e  <= 2'bxx;
       mret_e             <= 0;
 
-      rd1_e              <= {32{1'bx}};
-      rd2_e              <= {32{1'bx}};
-      csrd_e             <= {32{1'bx}};
-      pc_e               <= {32{1'bx}};
+      rd1_e              <= {XLEN{1'bx}};
+      rd2_e              <= {XLEN{1'bx}};
+      csrd_e             <= {XLEN{1'bx}};
+      pc_e               <= {XLEN{1'bx}};
       rs1_e              <= 5'bxxxxx;
       rs2_e              <= 5'bxxxxx;
       csrs_e             <= {11{1'bx}};
       rd_e               <= 5'bxxxxx;
-      imm_ext_e          <= {32{1'bx}};
-      pc_plus_4_e        <= {32{1'bx}};
+      imm_ext_e          <= {XLEN{1'bx}};
+      pc_plus_4_e        <= {XLEN{1'bx}};
 
-      mtvec_e            <= {32{1'bx}};
-      mepc_e             <= {32{1'bx}};
+      mtvec_e            <= {XLEN{1'bx}};
+      mepc_e             <= {XLEN{1'bx}};
     end else begin
       bubble_e           <= bubble_d;
 
@@ -352,41 +360,33 @@ module cpu #(
     end
   end
 
-  reg [31:0] rd1_fw_e;
-  reg [31:0] rd2_fw_e;
-  reg [31:0] csrd_fw_e;
+  reg [XLEN-1:0] rd1_fw_e;
+  reg [XLEN-1:0] rd2_fw_e;
 
   always @(*) begin
     case (forward_a_e)
       `FORWARD_NONE:      rd1_fw_e = rd1_e;
       `FORWARD_WRITEBACK: rd1_fw_e = result_w;
       `FORWARD_MEMORY:    rd1_fw_e = result_pre_m;
-      default:            rd1_fw_e = {32{1'bx}};
+      default:            rd1_fw_e = {XLEN{1'bx}};
     endcase
 
     case (forward_b_e)
       `FORWARD_NONE:      rd2_fw_e = rd2_e;
       `FORWARD_WRITEBACK: rd2_fw_e = result_w;
       `FORWARD_MEMORY:    rd2_fw_e = result_pre_m;
-      default:            rd2_fw_e = {32{1'bx}};
-    endcase
-
-    case (forward_csr_e)
-      `FORWARD_NONE:      csrd_fw_e = csrd_e;
-      `FORWARD_WRITEBACK: csrd_fw_e = alu_result_w;
-      `FORWARD_MEMORY:    csrd_fw_e = alu_result_m;
-      default:            csrd_fw_e = {32{1'bx}};
+      default:            rd2_fw_e = {XLEN{1'bx}};
     endcase
   end
 
-  reg [31:0] alu_src_a_val_e;
-  reg [31:0] alu_src_b_val_e;
+  reg [XLEN-1:0] alu_src_a_val_e;
+  reg [XLEN-1:0] alu_src_b_val_e;
 
   always @(*) begin
     case (alu_src_a_e)
       `ALU_SRC_A_RD1: alu_src_a_val_e = rd1_fw_e;
-      `ALU_SRC_A_CSR: alu_src_a_val_e = csrd_fw_e;
-      default: alu_src_a_val_e = {32{1'bx}};
+      `ALU_SRC_A_CSR: alu_src_a_val_e = csrd_e;
+      default:        alu_src_a_val_e = {XLEN{1'bx}};
     endcase
 
     case (alu_src_b_e)
@@ -394,11 +394,11 @@ module cpu #(
       `ALU_SRC_B_IMM: alu_src_b_val_e = imm_ext_e;
       `ALU_SRC_B_RD1: alu_src_b_val_e = rd1_fw_e;
       `ALU_SRC_B_RS1: alu_src_b_val_e = rs1_e;
-      default: alu_src_b_val_e = {32{1'bx}};
+      default:        alu_src_b_val_e = {XLEN{1'bx}};
     endcase
   end
 
-  wire [31:0] alu_result_e;
+  wire [XLEN-1:0] alu_result_e;
   wire alu_carry_e;
   wire alu_overflow_e;
   wire alu_zero_e;
@@ -416,47 +416,47 @@ module cpu #(
       .neg(alu_neg_e)
   );
 
-  wire [31:0] pc_target_e = pc_e + imm_ext_e;
+  wire [XLEN-1:0] pc_target_e = pc_e + imm_ext_e;
 
-  wire [ 2:0] pc_src_e;
+  wire [2:0] pc_src_e;
 
   cpu_branch_logic branch_logic (
-      .jump(jump_e),
-      .jump_src(jump_src_e),
-      .branch(branch_e),
+      .jump       (jump_e),
+      .jump_src   (jump_src_e),
+      .branch     (branch_e),
       .branch_cond(branch_cond_e),
-      .exception(exception_e),
+      .exception  (exception_e),
 
-      .alu_carry(alu_carry_e),
+      .alu_carry   (alu_carry_e),
       .alu_overflow(alu_overflow_e),
-      .alu_zero(alu_zero_e),
-      .alu_neg(alu_neg_e),
+      .alu_zero    (alu_zero_e),
+      .alu_neg     (alu_neg_e),
 
       .pc_src(pc_src_e)
   );
 
-  wire [31:0] write_data_e = rd2_fw_e;
+  wire [XLEN-1:0] write_data_e = rd2_fw_e;
 
   // 4. Memory
-  reg         bubble_m;
+  reg             bubble_m;
 
-  reg         reg_write_m;
-  reg  [ 2:0] result_src_m;
-  reg  [ 3:0] mem_write_m;
-  reg  [ 2:0] data_ext_control_m;
-  reg         csr_write_m;
-  reg         exception_m;
-  reg  [ 1:0] exception_cause_m;
-  reg         mret_m;
+  reg             reg_write_m;
+  reg  [     2:0] result_src_m;
+  reg  [     3:0] mem_write_m;
+  reg  [     2:0] data_ext_control_m;
+  reg             csr_write_m;
+  reg             exception_m;
+  reg  [     1:0] exception_cause_m;
+  reg             mret_m;
 
-  reg  [31:0] csrd_m;
-  reg  [31:0] pc_m;
-  reg  [31:0] alu_result_m;
-  reg  [31:0] write_data_m;
-  reg  [11:0] csrs_m;
-  reg  [ 4:0] rd_m;
-  reg  [31:0] pc_plus_4_m;
-  reg  [31:0] pc_target_m;
+  reg  [XLEN-1:0] csrd_m;
+  reg  [XLEN-1:0] pc_m;
+  reg  [XLEN-1:0] alu_result_m;
+  reg  [XLEN-1:0] write_data_m;
+  reg  [    11:0] csrs_m;
+  reg  [     4:0] rd_m;
+  reg  [XLEN-1:0] pc_plus_4_m;
+  reg  [XLEN-1:0] pc_target_m;
 
   always @(posedge clk) begin
     if (!rst_n || flush_m) begin
@@ -471,14 +471,14 @@ module cpu #(
       exception_cause_m  <= 2'bxx;
       mret_m             <= 0;
 
-      csrd_m             <= {32{1'bx}};
-      pc_m               <= {32{1'bx}};
-      alu_result_m       <= {32{1'bx}};
-      write_data_m       <= {32{1'bx}};
+      csrd_m             <= {XLEN{1'bx}};
+      pc_m               <= {XLEN{1'bx}};
+      alu_result_m       <= {XLEN{1'bx}};
+      write_data_m       <= {XLEN{1'bx}};
       csrs_m             <= {11{1'bx}};
       rd_m               <= 5'bxxxxx;
-      pc_plus_4_m        <= {32{1'bx}};
-      pc_target_m        <= {32{1'bx}};
+      pc_plus_4_m        <= {XLEN{1'bx}};
+      pc_target_m        <= {XLEN{1'bx}};
     end else begin
       bubble_m           <= bubble_e;
       reg_write_m        <= reg_write_e;
@@ -490,7 +490,7 @@ module cpu #(
       exception_cause_m  <= exception_cause_e;
       mret_m             <= mret_e;
 
-      csrd_m             <= csrd_fw_e;
+      csrd_m             <= csrd_e;
       pc_m               <= pc_e;
       alu_result_m       <= alu_result_e;
       write_data_m       <= write_data_e;
@@ -505,7 +505,7 @@ module cpu #(
   assign data_wdata = write_data_m;
   assign data_wenable = mem_write_m;
 
-  wire [31:0] read_data_m;
+  wire [XLEN-1:0] read_data_m;
 
   cpu_data_extend data_extend (
       .data(data_rdata),
@@ -513,7 +513,7 @@ module cpu #(
       .data_ext(read_data_m)
   );
 
-  reg [31:0] result_pre_m;
+  reg [XLEN-1:0] result_pre_m;
 
   always @(*) begin
     case (result_src_m)
@@ -521,28 +521,28 @@ module cpu #(
       `RESULT_SRC_PC_PLUS_4: result_pre_m = pc_plus_4_m;
       `RESULT_SRC_PC_TARGET: result_pre_m = pc_target_m;
       `RESULT_SRC_CSR:       result_pre_m = csrd_m;
-      default:               result_pre_m = {32{1'bx}};
+      default:               result_pre_m = {XLEN{1'bx}};
     endcase
   end
 
   // 5. Writeback
-  reg        bubble_w;
+  reg            bubble_w;
 
-  reg        reg_write_w;
-  reg [ 2:0] result_src_w;
-  reg        csr_write_w;
-  reg        exception_w;
-  reg [ 1:0] exception_cause_w;
-  reg        mret_w;
+  reg            reg_write_w;
+  reg [     2:0] result_src_w;
+  reg            csr_write_w;
+  reg            exception_w;
+  reg [     1:0] exception_cause_w;
+  reg            mret_w;
 
-  reg [31:0] pc_w;
-  reg [31:0] alu_result_w;
-  reg [31:0] result_pre_w;
-  reg [31:0] read_data_w;
-  reg [11:0] csrs_w;
-  reg [ 4:0] rd_w;
-  reg [31:0] pc_plus_4_w;
-  reg [31:0] pc_target_w;
+  reg [XLEN-1:0] pc_w;
+  reg [XLEN-1:0] alu_result_w;
+  reg [XLEN-1:0] result_pre_w;
+  reg [XLEN-1:0] read_data_w;
+  reg [    11:0] csrs_w;
+  reg [     4:0] rd_w;
+  reg [XLEN-1:0] pc_plus_4_w;
+  reg [XLEN-1:0] pc_target_w;
 
   always @(posedge clk) begin
     if (!rst_n) begin
@@ -555,14 +555,14 @@ module cpu #(
       exception_cause_w <= 2'bxx;
       mret_w            <= 0;
 
-      pc_w              <= {32{1'bx}};
-      alu_result_w      <= {32{1'bx}};
-      result_pre_w      <= {32{1'bx}};
-      read_data_w       <= {32{1'bx}};
+      pc_w              <= {XLEN{1'bx}};
+      alu_result_w      <= {XLEN{1'bx}};
+      result_pre_w      <= {XLEN{1'bx}};
+      read_data_w       <= {XLEN{1'bx}};
       csrs_w            <= {11{1'bx}};
       rd_w              <= 5'bxxxxx;
-      pc_plus_4_w       <= {32{1'bx}};
-      pc_target_w       <= {32{1'bx}};
+      pc_plus_4_w       <= {XLEN{1'bx}};
+      pc_target_w       <= {XLEN{1'bx}};
     end else begin
       bubble_w          <= bubble_m;
 
@@ -584,5 +584,5 @@ module cpu #(
     end
   end
 
-  wire [31:0] result_w = result_src_w == `RESULT_SRC_DATA ? read_data_w : result_pre_w;
+  wire [XLEN-1:0] result_w = result_src_w == `RESULT_SRC_DATA ? read_data_w : result_pre_w;
 endmodule

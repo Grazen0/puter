@@ -137,18 +137,16 @@ module cpu_csr_file #(
           default:                        mcause_next = {XLEN{1'bx}};
         endcase
       end else begin
-        mstatus_next[31] = 1;
-
         // acknowledging interrupt
         mepc_next = !bubble_e ? pc_e : !bubble_d ? pc_d : pc_f;
         mcause_next = mcond[MEI] ? MCAUSE_MEI : mcond[MSI] ? MCAUSE_MSI : MCAUSE_MTI;
 
         int_req = 0;  // avoid an int acknowledge on the next cycle
       end
-    end else if (mret_w) begin
-      mstatus_next[31]            = 0;
+    end
 
-      mstatus_next[`MSTATUS_MIE]  = 1;  // TODO: change back to mstatus[`MSTATUS_MPIE]
+    if (mret_w) begin
+      mstatus_next[`MSTATUS_MIE]  = mstatus[`MSTATUS_MPIE];
       mstatus_next[`MSTATUS_MPIE] = 1;
       priv_next                   = mstatus[`MSTATUS_MPP];
     end

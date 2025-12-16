@@ -37,7 +37,7 @@ module top (
   MMCME2_BASE #(
       .CLKIN1_PERIOD(10.0),  // 100 MHz input
       .CLKFBOUT_MULT_F(8.0),
-      .CLKOUT0_DIVIDE_F(32.0)  // 100 * 8 / 32 = 25 MHz
+      .CLKOUT0_DIVIDE_F(16.0)  // 100 * 8 / 16 = 50 MHz
   ) sys_mmcm (
       .CLKIN1  (clk),
       .CLKFBIN (sys_clkfb),

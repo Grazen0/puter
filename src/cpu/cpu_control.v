@@ -150,9 +150,9 @@ module cpu_control (
             //   $display("sret");
             // end
             12'h302: begin  // mret
-              jump = 1;
+              jump     = 1;
               jump_src = `JUMP_SRC_MEPC;
-              mret = 1;
+              mret     = 1;
             end
             12'h105: begin  // wfi
               // Implemented as nop
