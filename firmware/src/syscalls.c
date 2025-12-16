@@ -1,5 +1,5 @@
-#include "puter.h"
 #include "riscv.h"
+#include "vga.h"
 #include <errno.h>
 #include <sys/stat.h>
 #include <sys/times.h>
@@ -89,7 +89,7 @@ void *_sbrk(const int incr)
     char *prev_heap_end = heap_end;
 
     if (heap_end + incr > read_sp()) {
-        print("Heap and stack collision\n");
+        vga_print("Heap and stack collision\n");
         while (true) {
         }
     }
@@ -123,6 +123,6 @@ int wait([[maybe_unused]] int *const status)
 
 int _write([[maybe_unused]] const int file, char *const ptr, const int len)
 {
-    sprint(ptr, len);
+    vga_sprint(ptr, len);
     return len;
 }

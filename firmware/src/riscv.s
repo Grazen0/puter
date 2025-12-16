@@ -1,6 +1,6 @@
 .text
 
-.global read_sp, read_mstatus, read_mcycle, read_mcause, read_mepc, inc_mepc, enable_mti
+.global read_sp, read_mstatus, read_mcycle, read_mcause, read_mepc, inc_mepc, mstatus_set, mie_set
 
 read_sp:
     mv      a0, sp
@@ -30,8 +30,10 @@ inc_mepc:
     csrw    mepc, t0
     ret
 
-enable_mti:
-    li      t0, 0x880
-    csrs    mie, t0
-    csrs    mstatus, 0x8
+mstatus_set:
+    csrs    mstatus, a0
+    ret
+
+mie_set:
+    csrs    mie, a0
     ret

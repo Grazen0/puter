@@ -1,6 +1,8 @@
+#include "keyboard.h"
 #include "numeric.h"
 #include "puter.h"
 #include "riscv.h"
+#include "vga.h"
 #include <stddef.h>
 #include <stdio.h>
 
@@ -13,28 +15,6 @@ static constexpr char banner[] = "\
 ";
 
 static constexpr size_t MTI_FREQ = 1000;
-
-static constexpr size_t SCANCODES_CAPACITY = 32;
-
-static volatile u8 scancodes[SCANCODES_CAPACITY];
-static size_t scancodes_head = 0;
-static volatile size_t scancodes_tail = 0;
-
-static inline bool scancode_available(void)
-{
-    return scancodes_head != scancodes_tail;
-}
-
-static inline u8 scancode_take(void)
-{
-    const u8 scancode = scancodes[scancodes_head];
-
-    if (++scancodes_head >= SCANCODES_CAPACITY)
-        scancodes_head = 0;
-
-    return scancode;
-}
-
 static volatile u32 ticks = 0;
 
 void sleep_ms(const u32 ms)
@@ -51,24 +31,36 @@ void sleep_ms(const u32 ms)
     }
 }
 
+typedef enum {
+    MIE_SOFTWARE = 0x008,
+    MIE_TIMER = 0x080,
+    MIE_EXTERNAL = 0x800,
+} Mie;
+
+typedef enum {
+    MSTATUS_MIE = 0x8,
+} MStatusField;
+
 void main(void)
 {
-    init_display();
+    vga_init();
 
-    print("Initializing RTC...\n");
-
+    printf("Initializing RTC...\n");
     RTC->mtime = 0;
     RTC->mtimecmp = RTC_FREQ / MTI_FREQ;
 
     printf("Initializing PLIC...\n");
-
     for (size_t i = 0; i < PLIC_PORTS; ++i) {
         PLIC->int_enable[i] = 1;
         PLIC->int_priority[i] = 1 + i;
     }
 
+    printf("Initializing keyboard...\n");
+    kb_init();
+
     printf("Enabling interrupts...\n");
-    enable_mti();
+    mie_set(MIE_TIMER | MIE_EXTERNAL);
+    mstatus_set(MSTATUS_MIE);
 
     printf("\n");
 
@@ -79,12 +71,13 @@ void main(void)
     printf("Welcome to PuterOS.\n");
     printf("\n");
 
-    while (true) {
-        sleep_ms(500);
+    for (u8 i = 0; i < 16; ++i)
+        TRAM[i].attr = i << 4;
 
-        while (scancode_available()) {
-            printf("%02X ", scancode_take(), scancodes_head, scancodes_tail);
-            fflush(0);
+    while (true) {
+        while (kb_scancode_available()) {
+            printf("%02X ", kb_scancode_take());
+            fflush(nullptr);
         }
     }
 }
@@ -109,12 +102,8 @@ typedef enum : u8 {
         const u8 int_id = MEIID;
         PLIC->int_claim[int_id] = 1;
 
-        if (int_id == MEIID_KEYBOARD) {
-            scancodes[scancodes_tail] = KEYBOARD->scancode;
-
-            if (++scancodes_tail >= SCANCODES_CAPACITY)
-                scancodes_tail = 0;
-        }
+        if (int_id == MEIID_KEYBOARD)
+            kb_scancode_push(KEYBOARD->scancode);
 
         break;
 

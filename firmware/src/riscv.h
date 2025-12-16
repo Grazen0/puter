@@ -31,6 +31,8 @@ uintptr_t read_mepc(void);
 
 void inc_mepc(void);
 
-void enable_mti(void);
+void mstatus_set(u32 n);
+
+void mie_set(u32 n);
 
 #endif

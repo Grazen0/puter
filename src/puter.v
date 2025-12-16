@@ -100,16 +100,16 @@ module puter (
       .rdata_1  (ram_rdata)
   );
 
-  wire [7:0] tram_rdata;
+  wire [15:0] tram_rdata;
 
   video_unit video_unit (
       .sys_clk(sys_clk),
       .vga_clk(vga_clk),
       .rst_n  (rst_n),
 
-      .tram_addr   (data_addr[11:0]),
-      .tram_wdata  (data_wdata[7:0]),
-      .tram_wenable(data_wenable[0] && data_sel == DATA_SEL_TRAM),
+      .tram_addr   (data_addr[12:0]),
+      .tram_wdata  (data_wdata[15:0]),
+      .tram_wenable(data_wenable[1:0] & {2{data_sel == DATA_SEL_TRAM}}),
       .tram_rdata  (tram_rdata),
 
       .vga_red  (vga_red),

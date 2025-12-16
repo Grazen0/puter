@@ -8,6 +8,14 @@ typedef struct {
     volatile char out;
 } DebugControl;
 
+typedef union {
+    volatile u16 value;
+    struct {
+        volatile char ch;
+        volatile u8 attr;
+    };
+} TRamEntry;
+
 constexpr size_t RTC_FREQ = 100'000'000U;
 
 typedef struct {
@@ -39,20 +47,10 @@ constexpr size_t PLIC_BASE = 0xF000'0000U;
 constexpr size_t MEIID_BASE = 0xF800'0000U;
 
 #define DBG ((DebugControl *)DBG_BASE)
-#define TRAM ((volatile char *)TRAM_BASE)
+#define TRAM ((TRamEntry *)TRAM_BASE)
 #define RTC ((RealTimeCounter *)RTC_BASE)
 #define KEYBOARD ((Keyboard *)KEYBOARD_BASE)
 #define PLIC ((Plic *)PLIC_BASE)
 #define MEIID (*(volatile u8 *)MEIID_BASE)
-
-void init_display(void);
-
-void print(const char *s);
-
-void sprint(const char *s, size_t n);
-
-void print_int(int n);
-
-void print_hex(u32 n);
 
 #endif

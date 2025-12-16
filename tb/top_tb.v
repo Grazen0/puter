@@ -75,10 +75,10 @@ module top_tb ();
     #500_000;
 
     send_scancode(8'h15);
-    #1300;
-    // send_scancode(8'h69);
+    #10_000;
+    send_scancode(8'h42);
 
-    #500_000;
+    #1_000_000;
     $display("");
     $finish();
   end

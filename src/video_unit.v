@@ -7,10 +7,10 @@ module video_unit #(
     input wire vga_clk,
     input wire rst_n,
 
-    input wire [$clog2(TRAM_SIZE)-1:0] tram_addr,
-    input wire [7:0] tram_wdata,
-    input wire tram_wenable,
-    output wire [7:0] tram_rdata,
+    input wire [$clog2(2 * TRAM_SIZE)-1:0] tram_addr,
+    input wire [15:0] tram_wdata,
+    input wire [1:0] tram_wenable,
+    output wire [15:0] tram_rdata,
 
     output wire [3:0] vga_red,
     output wire [3:0] vga_green,
@@ -18,6 +18,7 @@ module video_unit #(
     output reg h_sync,
     output reg v_sync
 );
+
   localparam WIDTH = 640;
   localparam HEIGHT = 480;
 
@@ -42,12 +43,35 @@ module video_unit #(
   localparam COLS = WIDTH / CHAR_WIDTH;
   localparam TRAM_SIZE = ROWS * COLS;
 
-  reg [7:0] font_ram[0:FONT_RAM_SIZE-1];
+  localparam PALETTE_SIZE = 16;
 
-  wire [7:0] char_value;
+  reg [ 7:0] font_ram[0:FONT_RAM_SIZE-1];
+  reg [11:0] palette [ 0:PALETTE_SIZE-1];
 
-  dual_byte_ram #(
-      .SIZE(TRAM_SIZE)
+  initial begin
+    palette[0]  = 12'h000;  // black
+    palette[1]  = 12'h00A;  // blue
+    palette[2]  = 12'h0A0;  // green
+    palette[3]  = 12'h0AA;  // cyan
+    palette[4]  = 12'hA00;  // red
+    palette[5]  = 12'hA0A;  // magenta
+    palette[6]  = 12'hA50;  // brown
+    palette[7]  = 12'hAAA;  // gray
+
+    palette[8]  = 12'h555;  // dark gray
+    palette[9]  = 12'h55F;  // bright blue
+    palette[10] = 12'h5F5;  // bright green
+    palette[11] = 12'h5FF;  // bright cyan
+    palette[12] = 12'hF55;  // bright red
+    palette[13] = 12'hF5F;  // bright magenta
+    palette[14] = 12'hFF5;  // yellow
+    palette[15] = 12'hFFF;  // white
+  end
+
+  wire [15:0] active_entry;
+
+  dual_half_word_ram #(
+      .SIZE_HWORDS(TRAM_SIZE)
   ) tram (
       .clk(sys_clk),
 
@@ -56,8 +80,8 @@ module video_unit #(
       .wenable_1(tram_wenable),
       .rdata_1  (tram_rdata),
 
-      .addr_2 (char_idx),
-      .rdata_2(char_value)
+      .addr_2 ({char_idx, 1'b0}),
+      .rdata_2(active_entry)
   );
 
   reg [$clog2(V_FRAME)-1:0] y_pos, y_pos_next;
@@ -66,7 +90,7 @@ module video_unit #(
   reg v_visible, v_visible_next;
   reg h_sync_next;
   reg v_sync_next;
-  reg cur_pixel;
+  reg [11:0] cur_color;
 
   always @(*) begin
     y_pos_next = y_pos;
@@ -113,7 +137,7 @@ module video_unit #(
       v_sync    <= 1;
       h_visible <= 1;
       v_visible <= 1;
-      cur_pixel <= 0;
+      cur_color <= 12'h000;
     end else begin
       x_pos     <= x_pos_next;
       y_pos     <= y_pos_next;
@@ -121,7 +145,7 @@ module video_unit #(
       v_sync    <= v_sync_next;
       h_visible <= h_visible_next;
       v_visible <= v_visible_next;
-      cur_pixel <= cur_pixel_next;
+      cur_color <= cur_color_next;
     end
   end
 
@@ -133,16 +157,26 @@ module video_unit #(
   wire [2:0] char_x = x_pos_next[2:0];
   wire [3:0] char_y = y_pos_next[3:0];
 
-  wire [$clog2(FONT_RAM_SIZE)-1:0] byte_idx = (CHAR_SIZE * char_value) + char_y;
+  wire [7:0] active_attr;
+  wire [7:0] active_char;
+
+  assign {active_attr, active_char} = active_entry;
+
+  wire [3:0] fg_color_idx = active_attr[3:0];
+  wire [3:0] bg_color_idx = active_attr[7:4];
+
+  wire [11:0] fg_color = palette[fg_color_idx];
+  wire [11:0] bg_color = palette[bg_color_idx];
+
+  wire [$clog2(FONT_RAM_SIZE)-1:0] byte_idx = (CHAR_SIZE * active_char) + char_y;
 
   wire [7:0] cur_byte = font_ram[byte_idx];
-  wire cur_pixel_next = cur_byte[7-char_x];
+  wire cur_pixel = cur_byte[7-char_x];
+
+  wire [11:0] cur_color_next = cur_pixel ? fg_color : bg_color;
 
   wire visible = h_visible & v_visible;
-
-  assign vga_red   = {4{visible & cur_pixel}};
-  assign vga_green = {4{visible & cur_pixel}};
-  assign vga_blue  = {4{visible & cur_pixel}};
+  assign {vga_red, vga_green, vga_blue} = cur_color & {12{visible}};
 
   initial begin
     $readmemh(FONT_DATA, font_ram);

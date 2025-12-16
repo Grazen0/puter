@@ -11,7 +11,10 @@ module top (
     output wire v_sync,
 
     input wire ps2_data,
-    input wire ps2_clk
+    input wire ps2_clk,
+
+    input  wire rs_rx,
+    output wire rs_tx
 );
 
   wire sys_clk;
@@ -76,4 +79,5 @@ module top (
       .ps2_clk (ps2_clk),
       .ps2_data(ps2_data)
   );
+
 endmodule
