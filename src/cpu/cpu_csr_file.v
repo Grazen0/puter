@@ -120,10 +120,10 @@ module cpu_csr_file #(
     end
 
     if (exception_w || int_ack) begin
-      priv_next = `PRIV_M;
-      mstatus_next[`MSTATUS_MIE] = 0;
+      priv_next                   = `PRIV_M;
+      mstatus_next[`MSTATUS_MIE]  = 0;
       mstatus_next[`MSTATUS_MPIE] = mstatus[`MSTATUS_MIE];
-      mstatus_next[`MSTATUS_MPP] = priv;
+      mstatus_next[`MSTATUS_MPP]  = priv;
 
       if (exception_w) begin
         // handling exception
