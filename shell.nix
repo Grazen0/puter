@@ -13,6 +13,7 @@ pkgs.mkShell {
     glibc_multi
     gtkwave
     iverilog
+    screen
     xxd
 
     riscvPkgs.buildPackages.binutils

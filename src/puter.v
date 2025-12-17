@@ -13,7 +13,10 @@ module puter (
     output wire v_sync,
 
     input wire ps2_clk,
-    input wire ps2_data
+    input wire ps2_data,
+
+    input  wire rs_rx,
+    output wire rs_tx
 );
   localparam MEI_PORTS = 2;
 
@@ -24,6 +27,7 @@ module puter (
   localparam DATA_SEL_PLIC = 3'd4;
   localparam DATA_SEL_MEI_ID = 3'd5;
   localparam DATA_SEL_KEYBOARD_DATA = 3'd6;
+  localparam DATA_SEL_UART = 3'd7;
 
   wire [31:0] instr_addr;
   wire [31:0] instr_rdata;
@@ -57,7 +61,8 @@ module puter (
     casez (data_addr[31:27])
       5'b0zzz_z: data_sel = DATA_SEL_ROM;
       5'b10zz_z: data_sel = DATA_SEL_RAM;
-      5'b110z_z: data_sel = DATA_SEL_TRAM;
+      5'b1100_z: data_sel = DATA_SEL_TRAM;
+      5'b1101_z: data_sel = DATA_SEL_UART;
       5'b1110_0: data_sel = DATA_SEL_RTC;
       5'b1110_1: data_sel = DATA_SEL_KEYBOARD_DATA;
       5'b1111_0: data_sel = DATA_SEL_PLIC;
@@ -69,6 +74,7 @@ module puter (
       DATA_SEL_ROM:           data_rdata = rom_rdata;
       DATA_SEL_RAM:           data_rdata = ram_rdata;
       DATA_SEL_TRAM:          data_rdata = tram_rdata;
+      DATA_SEL_UART:          data_rdata = uart_ready;
       DATA_SEL_RTC:           data_rdata = rtc_rdata;
       DATA_SEL_PLIC:          data_rdata = plic_rdata;
       DATA_SEL_MEI_ID:        data_rdata = mei_id;
@@ -171,5 +177,19 @@ module puter (
 
       .data (keyboard_data),
       .valid(keyboard_valid)
+  );
+
+  wire uart_ready;
+
+  uart_controller uart_controller (
+      .clk  (sys_clk),
+      .rst_n(rst_n),
+
+      .data_in    (data_wdata[7:0]),
+      .start_write(data_wenable[0] && data_sel == DATA_SEL_UART),
+      .ready      (uart_ready),
+
+      .rx(rs_rx),
+      .tx(rs_tx)
   );
 endmodule

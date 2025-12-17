@@ -77,7 +77,9 @@ module top (
       .v_sync   (v_sync),
 
       .ps2_clk (ps2_clk),
-      .ps2_data(ps2_data)
-  );
+      .ps2_data(ps2_data),
 
+      .rs_rx(rs_rx),
+      .rs_tx(rs_tx)
+  );
 endmodule

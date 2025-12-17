@@ -1,7 +1,7 @@
 `default_nettype none `timescale 1ns / 1ps
 
 module top_tb ();
-  reg clk, rst_n, ps2_clk, ps2_data;
+  reg clk, rst_n, ps2_clk, ps2_data, rs_rx;
   always #5 clk = ~clk;
 
   wire [3:0] vga_red;
@@ -9,6 +9,8 @@ module top_tb ();
   wire [3:0] vga_blue;
   wire h_sync;
   wire v_sync;
+
+  wire rs_tx;
 
   top top (
       .clk  (clk),
@@ -21,7 +23,10 @@ module top_tb ();
       .vga_green(vga_green),
       .vga_blue (vga_blue),
       .h_sync   (h_sync),
-      .v_sync   (v_sync)
+      .v_sync   (v_sync),
+
+      .rs_rx(rs_rx),
+      .rs_tx(rs_tx)
   );
 
   always @(posedge top.sys_clk) begin

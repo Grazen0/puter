@@ -16,6 +16,13 @@ typedef union {
     };
 } TRamEntry;
 
+typedef struct {
+    union {
+        volatile u8 out;
+        volatile bool ready;
+    };
+} Uart;
+
 constexpr size_t RTC_FREQ = 100'000'000U;
 
 typedef struct {
@@ -41,6 +48,7 @@ constexpr size_t TRAM_SIZE = SCREEN_ROWS * SCREEN_COLS;
 
 constexpr size_t DBG_BASE = 0x1000'0000U;
 constexpr size_t TRAM_BASE = 0xC000'0000U;
+constexpr size_t UART_BASE = 0xD000'0000U;
 constexpr size_t RTC_BASE = 0xE000'0000U;
 constexpr size_t KEYBOARD_BASE = 0xE800'0000U;
 constexpr size_t PLIC_BASE = 0xF000'0000U;
@@ -48,6 +56,7 @@ constexpr size_t MEIID_BASE = 0xF800'0000U;
 
 #define DBG ((DebugControl *)DBG_BASE)
 #define TRAM ((TRamEntry *)TRAM_BASE)
+#define UART ((Uart *)UART_BASE)
 #define RTC ((RealTimeCounter *)RTC_BASE)
 #define KEYBOARD ((Keyboard *)KEYBOARD_BASE)
 #define PLIC ((Plic *)PLIC_BASE)

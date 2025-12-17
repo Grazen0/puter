@@ -39,6 +39,14 @@ void kmain(void)
     }
 }
 
+void uart_write(const u8 byte)
+{
+    while (!UART->ready) {
+    }
+
+    UART->out = byte;
+}
+
 void main(void)
 {
     vga_init();
@@ -52,6 +60,12 @@ void main(void)
         PLIC->int_enable[i] = 1;
         PLIC->int_priority[i] = 1 + i;
     }
+
+    static const char msg[] = "Hello, world!\n";
+    const char *ptr = msg;
+
+    while (*ptr != '\0')
+        uart_write(*ptr++);
 
     printf("Initializing keyboard driver...\n");
     kb_init();
