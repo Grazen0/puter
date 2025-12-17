@@ -13,7 +13,7 @@ module cpu_tb ();
   wire [31:0] rom_rdata;
 
   dual_word_rom #(
-      .SOURCE_FILE("/home/jdgt/Code/utec/arqui/puter/build/firmware/firmware.mem")
+      .SOURCE_FILE("/home/jdgt/Code/verilog/puter/build/firmware/firmware.mem")
   ) rom (
       .addr_1 (instr_addr[14:0]),
       .rdata_1(instr_rdata),

@@ -1,7 +1,7 @@
 `default_nettype none `timescale 1ns / 1ps
 
 module video_unit #(
-    parameter FONT_DATA = "/home/jdgt/Code/utec/arqui/puter/build/unscii-16.mem"
+    parameter FONT_DATA = "/home/jdgt/Code/verilog/puter/build/unscii-16.mem"
 ) (
     input wire sys_clk,
     input wire vga_clk,
