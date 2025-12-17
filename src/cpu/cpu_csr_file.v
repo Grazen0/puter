@@ -149,14 +149,16 @@ module cpu_csr_file #(
       mstatus_next[`MSTATUS_MIE]  = mstatus[`MSTATUS_MPIE];
       mstatus_next[`MSTATUS_MPIE] = 1;
       priv_next                   = mstatus[`MSTATUS_MPP];
+      mstatus_next[`MSTATUS_MPP]  = 2'b00;
+      mstatus_next[`MSTATUS_MPRV] = 0;
     end
 
     // read-only mstatus fields
-    mstatus_next[37]    = 0;
-    mstatus_next[36]    = 0;
-    mstatus_next[35:34] = XLEN == 32 ? 2'd1 : 2'd2;
-    mstatus_next[33:32] = XLEN == 32 ? 2'd1 : 2'd2;
-    mstatus_next[16:15] = 0;
+    mstatus_next[37]           = 0;
+    mstatus_next[36]           = 0;
+    mstatus_next[`MSTATUS_SXL] = XLEN == 32 ? 2'd1 : 2'd2;
+    mstatus_next[`MSTATUS_UXL] = XLEN == 32 ? 2'd1 : 2'd2;
+    mstatus_next[`MSTATUS_XS]  = 0;
 
     case (raddr)
       `CSR_MSTATUS:  rdata = mstatus[31:0];
@@ -180,20 +182,20 @@ module cpu_csr_file #(
 
   always @(posedge clk) begin
     if (!rst_n) begin
-      priv                  <= `PRIV_M;
+      priv                   <= `PRIV_M;
 
-      mstatus[38]           <= 0;
-      mstatus[37]           <= 0;
-      mstatus[36]           <= 0;
-      mstatus[35:34]        <= XLEN == 32 ? 2'd1 : 2'd2;
-      mstatus[33:32]        <= XLEN == 32 ? 2'd1 : 2'd2;
-      mstatus[17]           <= 0;
-      mstatus[16:15]        <= 0;
-      mstatus[`MSTATUS_MPP] <= `PRIV_M;
-      mstatus[`MSTATUS_MIE] <= 0;
-      mie                   <= {XLEN{1'b0}};
+      mstatus[38]            <= 0;
+      mstatus[37]            <= 0;
+      mstatus[36]            <= 0;
+      mstatus[`MSTATUS_SXL]  <= XLEN == 32 ? 2'd1 : 2'd2;
+      mstatus[`MSTATUS_UXL]  <= XLEN == 32 ? 2'd1 : 2'd2;
+      mstatus[`MSTATUS_MPRV] <= 0;
+      mstatus[`MSTATUS_XS]   <= 0;
+      mstatus[`MSTATUS_MPP]  <= `PRIV_M;
+      mstatus[`MSTATUS_MIE]  <= 0;
+      mie                    <= {XLEN{1'b0}};
 
-      mcycle                <= 0;
+      mcycle                 <= 0;
     end else begin
       priv     <= priv_next;
 

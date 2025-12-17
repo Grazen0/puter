@@ -88,7 +88,7 @@ void *_sbrk(const int incr)
     static char *heap_end = &_end;
     char *prev_heap_end = heap_end;
 
-    if (heap_end + incr > read_sp()) {
+    if (heap_end + incr > rv_sp_read()) {
         vga_print("Heap and stack collision\n");
         while (true) {
         }

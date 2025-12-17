@@ -27,7 +27,8 @@ module cpu_control (
     output reg       csr_write,
     output reg       exception,
     output reg [1:0] exception_cause,
-    output reg       mret
+    output reg       mret,
+    output reg [1:0] required_priv
 );
   always @(*) begin
     reg_write        = 0;
@@ -47,6 +48,7 @@ module cpu_control (
     exception_cause  = 2'bxx;
     mret             = 0;
     data_ext_control = 3'bxxx;
+    required_priv    = `PRIV_U;
 
     case (op)
       7'b0000011: begin  // load
@@ -138,17 +140,18 @@ module cpu_control (
 
         if (funct3 == 3'b000) begin
           case (funct12)
-            // 12'h000: begin  // ecall
-            //   exception = 1;
-            //   exception_cause = `EXCAUSE_ECALL;
-            // end
-            // 12'h001: begin  // ebreak
-            //   exception = 1;
-            //   exception_cause = `EXCAUSE_BREAKPOINT;
-            // end
-            // 12'h102: begin  // sret
-            //   $display("sret");
-            // end
+            12'h000: begin  // ecall
+              exception = 1;
+              exception_cause = `EXCAUSE_ECALL;
+            end
+            12'h001: begin  // ebreak
+              exception = 1;
+              exception_cause = `EXCAUSE_BREAKPOINT;
+            end
+            12'h102: begin  // sret
+              illegal_instr = 1;  // for now
+              required_priv = `PRIV_S;
+            end
             12'h302: begin  // mret
               jump     = 1;
               jump_src = `JUMP_SRC_MEPC;
@@ -156,6 +159,7 @@ module cpu_control (
             end
             12'h105: begin  // wfi
               // Implemented as nop
+              required_priv = `PRIV_M;
             end
             default: begin
               illegal_instr = 1;

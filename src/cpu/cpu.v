@@ -38,22 +38,24 @@ module cpu #(
 
       .rs1_e(rs1_e),
 
-      .rs2_e(rs2_e),
-      .rd_e(rd_e),
-      .csrs_e(csrs_e),
-      .pc_src_e(pc_src_e),
+      .rs2_e       (rs2_e),
+      .rd_e        (rd_e),
+      .csrs_e      (csrs_e),
+      .pc_src_e    (pc_src_e),
       .result_src_e(result_src_e),
-      .csr_write_e(csr_write_e),
+      .csr_write_e (csr_write_e),
+      .exception_e (exception_e),
 
       .reg_write_m(reg_write_m),
       .csr_write_m(csr_write_m),
-      .rd_m(rd_m),
-      .csrs_m(csrs_m),
+      .rd_m       (rd_m),
+      .csrs_m     (csrs_m),
+      .exception_m(exception_m),
 
       .reg_write_w(reg_write_w),
       .csr_write_w(csr_write_w),
-      .rd_w(rd_w),
-      .csrs_w(csrs_w),
+      .rd_w       (rd_w),
+      .csrs_w     (csrs_w),
 
       .forward_a_e(forward_a_e),
       .forward_b_e(forward_b_e),
@@ -142,9 +144,10 @@ module cpu #(
   wire [ 1:0] jump_src_d;
   wire [ 2:0] branch_cond_d;
   wire        csr_write_d;
-  wire        exception_d;
-  wire [ 1:0] exception_cause_d;
+  wire        control_exception_d;
+  wire [ 1:0] control_excause_d;
   wire        mret_d;
+  wire [ 1:0] required_priv_d;
 
   cpu_control control (
       .op     (op_d),
@@ -165,9 +168,10 @@ module cpu #(
       .jump_src        (jump_src_d),
       .branch_cond     (branch_cond_d),
       .csr_write       (csr_write_d),
-      .exception       (exception_d),
-      .exception_cause (exception_cause_d),
-      .mret            (mret_d)
+      .exception       (control_exception_d),
+      .exception_cause (control_excause_d),
+      .mret            (mret_d),
+      .required_priv   (required_priv_d)
   );
 
   wire [XLEN-1:0] rd1_d;
@@ -210,6 +214,7 @@ module cpu #(
   wire [XLEN-1:0] mtvec_d;
   wire [XLEN-1:0] mepc_d;
   wire int_req;
+  wire [1:0] priv_d;
 
   cpu_csr_file #(
       .XLEN(XLEN)
@@ -244,7 +249,9 @@ module cpu #(
       .int_ack(int_ack),
 
       .mti_pending(mti_pending),
-      .mei_pending(mei_pending)
+      .mei_pending(mei_pending),
+
+      .priv(priv_d)
   );
 
   reg int_req_buf;
@@ -258,6 +265,25 @@ module cpu #(
     ~exception_w & ~mret_w &
     ~exception_m & ~mret_m &
     ~exception_e & ~mret_e;
+
+  wire exception_d;
+  wire [1:0] excause_d;
+
+  cpu_exception_logic exception_logic (
+      .priv         (priv_d),
+      .required_priv(required_priv_d),
+
+      .csr_write(csr_write_d),
+      .csrs     (csrs_d),
+
+      .control_exception(control_exception_d),
+      .control_excause  (control_excause_d),
+
+      .exception(exception_d),
+      .excause  (excause_d)
+  );
+
+  // TODO: mask reg_write, mem_write and similar signals behind ~illegal_instr.
 
   // 3. Execute
   reg bubble_e;
@@ -341,7 +367,7 @@ module cpu #(
       branch_cond_e      <= branch_cond_d;
       csr_write_e        <= csr_write_d;
       exception_e        <= exception_d;
-      exception_cause_e  <= exception_cause_d;
+      exception_cause_e  <= excause_d;
       mret_e             <= mret_d;
 
       rd1_e              <= rd1_d;

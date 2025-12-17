@@ -1,39 +1,47 @@
 .text
 
-.global read_sp, read_mstatus, read_mcycle, read_mcause, read_mepc, inc_mepc, mstatus_set, mie_set
+.global rv_sp_read, rv_mstatus_read, rv_mcycle_read, rv_mcause_read, rv_mepc_read, rv_mepc_inc, rv_mstatus_set, rv_mie_set, rv_jump_umode
 
-read_sp:
+rv_sp_read:
     mv      a0, sp
     ret
 
-read_mstatus:
+rv_mstatus_read:
     csrr    a0, mstatus
     ret
 
 
-read_mcycle:
+rv_mcycle_read:
     csrr    a0, mcycle
     csrr    a1, mcycleh
     ret
 
-read_mcause:
+rv_mcause_read:
     csrr    a0, mcause
     ret
 
-read_mepc:
+rv_mepc_read:
     csrr    a0, mepc
     ret
 
-inc_mepc:
+rv_mepc_inc:
     csrr    t0, mepc
     addi    t0, t0, 4
     csrw    mepc, t0
     ret
 
-mstatus_set:
+rv_mstatus_set:
     csrs    mstatus, a0
     ret
 
-mie_set:
+rv_mie_set:
     csrs    mie, a0
     ret
+
+rv_jump_umode:
+    # set mstatus.MPP = U-mode
+    li      t0, 0x00001800
+    csrc    mstatus, t0
+
+    csrw    mepc, a0
+    mret

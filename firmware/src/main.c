@@ -31,15 +31,13 @@ void sleep_ms(const u32 ms)
     }
 }
 
-typedef enum {
-    MIE_SOFTWARE = 0x008,
-    MIE_TIMER = 0x080,
-    MIE_EXTERNAL = 0x800,
-} Mie;
-
-typedef enum {
-    MSTATUS_MIE = 0x8,
-} MStatusField;
+void kmain(void)
+{
+    printf("kernel!\n");
+    __asm__ volatile("csrr t0, mepc");
+    while (true) {
+    }
+}
 
 void main(void)
 {
@@ -55,14 +53,16 @@ void main(void)
         PLIC->int_priority[i] = 1 + i;
     }
 
-    printf("Initializing keyboard...\n");
+    printf("Initializing keyboard driver...\n");
     kb_init();
 
     printf("Enabling interrupts...\n");
-    mie_set(MIE_TIMER | MIE_EXTERNAL);
-    mstatus_set(MSTATUS_MIE);
+    rv_mie_set(MIE_TIMER | MIE_EXTERNAL);
+    rv_mstatus_set(MSTATUS_MIE);
 
     printf("\n");
+
+    // rv_jump_umode(kmain);
 
     printf("Wake up, Neo...\n");
     printf("\n");
@@ -90,7 +90,7 @@ typedef enum : u8 {
 {
     // TODO: set up reentrancy
 
-    const u32 mcause = read_mcause();
+    const u32 mcause = rv_mcause_read();
 
     switch (mcause) {
     case MCAUSE_M_TIMER_INT:
@@ -108,13 +108,13 @@ typedef enum : u8 {
         break;
 
     case MCAUSE_ILLEGAL_INSTR:
-        printf("Illegal instruction (pc = 0x%08X)\n", read_mepc());
+        printf("Illegal instruction (pc = 0x%08X)\n", rv_mepc_read());
         while (true) {
         }
 
     case MCAUSE_U_ECALL:
         printf("User ecall\n");
-        inc_mepc();
+        rv_mepc_inc();
         break;
 
     default:

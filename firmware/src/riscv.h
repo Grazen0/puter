@@ -4,6 +4,16 @@
 #include "numeric.h"
 #include <stdint.h>
 
+typedef enum {
+    MIE_SOFTWARE = 0x008,
+    MIE_TIMER = 0x080,
+    MIE_EXTERNAL = 0x800,
+} MieField;
+
+typedef enum {
+    MSTATUS_MIE = 0x8,
+} MStatusField;
+
 typedef enum : u32 {
     MCAUSE_INTERRUPT = 0x8000'0000,
     MCAUSE_EXCEPTION = 0x0000'0000,
@@ -19,20 +29,22 @@ typedef enum : u32 {
     MCAUSE_M_EXTERNAL_INT = MCAUSE_INTERRUPT | 11,
 } MCause;
 
-char *read_sp(void);
+char *rv_sp_read(void);
 
-u32 read_mstatus(void);
+u32 rv_mstatus_read(void);
 
-u64 read_mcycle(void);
+u64 rv_mcycle_read(void);
 
-u32 read_mcause(void);
+u32 rv_mcause_read(void);
 
-uintptr_t read_mepc(void);
+uintptr_t rv_mepc_read(void);
 
-void inc_mepc(void);
+void rv_mepc_inc(void);
 
-void mstatus_set(u32 n);
+void rv_mstatus_set(u32 n);
 
-void mie_set(u32 n);
+void rv_mie_set(u32 n);
+
+[[noreturn]] void rv_jump_umode(void (*fn)(void));
 
 #endif

@@ -26,6 +26,10 @@
 `define MSTATUS_MPIE 7
 `define MSTATUS_SPP 8
 `define MSTATUS_MPP 12:11
+`define MSTATUS_XS 16:15
+`define MSTATUS_MPRV 17
+`define MSTATUS_UXL 33:32
+`define MSTATUS_SXL 35:34
 
 
 `endif

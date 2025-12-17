@@ -16,11 +16,13 @@ module cpu_hazard_unit (
     input wire [ 2:0] pc_src_e,
     input wire [ 2:0] result_src_e,
     input wire        csr_write_e,
+    input wire        exception_e,
 
     input wire        reg_write_m,
     input wire        csr_write_m,
     input wire [ 4:0] rd_m,
     input wire [11:0] csrs_m,
+    input wire        exception_m,
 
     input wire        reg_write_w,
     input wire        csr_write_w,
@@ -73,7 +75,10 @@ module cpu_hazard_unit (
   // written to but wihout a jump (unlike an mret or an exception, which do
   // write to csr but also jump, which flushes instructions and does not
   // require stalling)
-  wire csr_stall = csr_write_e | csr_write_m;
+  //
+  // NOTE: the exception checks might not be necessary when i add the unit to
+  // turn off write signals on an illegal instruction
+  wire csr_stall = (csr_write_e & ~exception_e) | (csr_write_m & ~exception_m);
 
   always @(*) begin
     if (int_ack) begin
