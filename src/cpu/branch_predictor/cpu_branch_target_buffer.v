@@ -2,6 +2,7 @@
 
 module cpu_branch_target_buffer #(
     parameter XLEN = 32,
+    parameter BYTE_OFFSET = 2,
     parameter SET_WIDTH = 8
 ) (
     input wire clk,
@@ -11,11 +12,11 @@ module cpu_branch_target_buffer #(
     input wire [XLEN-1:0] update_target_addr,
     input wire            update,
 
-    input  wire [XLEN-1:0] branch_addr,
-    output wire            branch_hit,
-    output wire [XLEN-1:0] branch_target_addr
+    input  wire [XLEN-1:0] addr,
+    output wire            hit,
+    output wire [XLEN-1:0] target_addr
 );
-  localparam TAG_WIDTH = XLEN - SET_WIDTH;
+  localparam TAG_WIDTH = XLEN - BYTE_OFFSET - SET_WIDTH;
   localparam SETS = 2 ** SET_WIDTH;
 
   reg [XLEN-1:0] targets[0:SETS-1];
@@ -25,11 +26,11 @@ module cpu_branch_target_buffer #(
   wire [TAG_WIDTH-1:0] branch_tag, update_tag;
   wire [SET_WIDTH-1:0] branch_set, update_set;
 
-  assign {branch_tag, branch_set} = branch_addr;
-  assign {update_tag, update_set} = update_addr;
+  assign {branch_tag, branch_set} = addr[XLEN-1:BYTE_OFFSET];
+  assign {update_tag, update_set} = update_addr[XLEN-1:BYTE_OFFSET];
 
-  assign branch_hit = valid[branch_set] && branch_tag == tags[branch_set];
-  assign branch_target_addr = targets[branch_set];
+  assign hit = valid[branch_set] && branch_tag == tags[branch_set];
+  assign target_addr = targets[branch_set];
 
   always @(posedge clk) begin
     if (!rst_n) begin

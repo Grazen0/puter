@@ -3,6 +3,7 @@
 module cpu_branch_predictor #(
     parameter XLEN = 32,
     parameter CTR_WIDTH = 3,
+    parameter BYTE_OFFSET = 2,
     parameter SET_WIDTH = 8
 ) (
     input wire clk,
@@ -28,8 +29,8 @@ module cpu_branch_predictor #(
   wire [TAG_WIDTH-1:0] branch_tag, update_tag;
   wire [SET_WIDTH-1:0] branch_set, update_set;
 
-  assign {branch_tag, branch_set} = branch_addr;
-  assign {update_tag, update_set} = update_addr;
+  assign {branch_tag, branch_set} = branch_addr[XLEN-1:BYTE_OFFSET];
+  assign {update_tag, update_set} = update_addr[XLEN-1:BYTE_OFFSET];
 
   wire branch_hit = valid[branch_set] && branch_tag == tags[branch_set];
   wire update_hit = valid[update_set] && update_tag == tags[update_set];

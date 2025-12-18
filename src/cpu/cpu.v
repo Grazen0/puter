@@ -127,7 +127,7 @@ module cpu #(
       .branch_taken(branch_pred_take_f)
   );
 
-  wire            branch_pred_taken_f = branch_pred_take_f && branch_target_hit_f;
+  wire            branch_pred_taken_f = branch_pred_take_f & branch_target_hit_f;
 
   wire            branch_target_hit_f;
   wire [XLEN-1:0] branch_target_addr_f;
@@ -140,9 +140,9 @@ module cpu #(
       .update_target_addr(pc_jump_e),
       .update            (branch_e),
 
-      .branch_addr       (pc_f),
-      .branch_hit        (branch_target_hit_f),
-      .branch_target_addr(branch_target_addr_f)
+      .addr       (pc_f),
+      .hit        (branch_target_hit_f),
+      .target_addr(branch_target_addr_f)
   );
 
   wire            jump_target_hit_f;
@@ -156,9 +156,9 @@ module cpu #(
       .update_target_addr(pc_jump_e),
       .update            (jump_e),
 
-      .branch_addr       (pc_f),
-      .branch_hit        (jump_target_hit_f),
-      .branch_target_addr(jump_target_addr_f)
+      .addr       (pc_f),
+      .hit        (jump_target_hit_f),
+      .target_addr(jump_target_addr_f)
   );
 
   // 2. Decode
@@ -511,7 +511,9 @@ module cpu #(
   wire alu_zero_e;
   wire alu_neg_e;
 
-  cpu_alu alu (
+  cpu_alu #(
+      .XLEN(XLEN)
+  ) alu (
       .src_a  (alu_src_a_val_e),
       .src_b  (alu_src_b_val_e),
       .control(alu_control_e),
@@ -540,7 +542,9 @@ module cpu #(
     endcase
   end
 
-  cpu_branch_logic branch_logic (
+  cpu_branch_logic #(
+      .XLEN(XLEN)
+  ) branch_logic (
       .jump            (jump_e),
       .jump_src        (jump_src_e),
       .jump_target_hit (jump_target_hit_e),
