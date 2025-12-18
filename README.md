@@ -6,7 +6,7 @@ A RISC-V-based system with a super simple OS (in the making) named _PuterOS_.
 
 - [ ] Keyboard driver.
 - [ ] Screen cursor.
-- [ ] Branch predictor.
+- [x] Branch predictor.
 - [ ] On-the-fly software updates via USB.
 - [ ] Programmable text font.
 - [ ] Programmable text palette.
