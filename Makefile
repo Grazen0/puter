@@ -30,7 +30,7 @@ FW_LINKER := $(FW_BASE)/data/linker.ld
 FW_INC_DIRS := $(FW_SRC_DIRS)
 FW_INC_FLAGS := $(addprefix -I,$(FW_INC_DIRS))
 
-override CFLAGS += $(FW_INC_FLAGS) -march=rv32im_zicsr -mabi=ilp32 \
+override CFLAGS += $(FW_INC_FLAGS) -march=rv32i_zicsr -mabi=ilp32 \
 		  -std=c23 -specs=nano.specs -nostartfiles -ffreestanding \
 		  -g -Oz -ffunction-sections -fdata-sections \
 		  -Wall -Wextra -Wpedantic

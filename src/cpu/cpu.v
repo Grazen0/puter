@@ -185,7 +185,7 @@ module cpu #(
   wire [ 3:0] mem_write_d;
   wire        jump_d;
   wire        branch_d;
-  wire [ 4:0] alu_control_d;
+  wire [ 3:0] alu_control_d;
   wire        alu_src_a_d;
   wire [ 1:0] alu_src_b_d;
   wire [ 2:0] imm_src_d;
@@ -335,35 +335,35 @@ module cpu #(
   // TODO: mask reg_write, mem_write and similar signals behind ~illegal_instr.
 
   // 3. Execute
-  reg            bubble_e;
+  reg bubble_e;
 
-  reg            branch_pred_taken_e;
-  reg            jump_target_hit_e;
+  reg branch_pred_taken_e;
+  reg jump_target_hit_e;
   reg [XLEN-1:0] jump_target_addr_e;
-  reg            reg_write_e;
-  reg [     2:0] result_src_e;
-  reg [     3:0] mem_write_e;
-  reg            jump_e;
-  reg            branch_e;
-  reg [     4:0] alu_control_e;
-  reg            alu_src_a_e;
-  reg [     1:0] alu_src_b_e;
-  reg [     2:0] data_ext_control_e;
-  reg [     1:0] jump_src_e;
-  reg [     2:0] branch_cond_e;
-  reg            csr_write_e;
-  reg            exception_e;
-  reg [     1:0] exception_cause_e;
-  reg            mret_e;
+  reg reg_write_e;
+  reg [2:0] result_src_e;
+  reg [3:0] mem_write_e;
+  reg jump_e;
+  reg branch_e;
+  reg [3:0] alu_control_e;
+  reg alu_src_a_e;
+  reg [1:0] alu_src_b_e;
+  reg [2:0] data_ext_control_e;
+  reg [1:0] jump_src_e;
+  reg [2:0] branch_cond_e;
+  reg csr_write_e;
+  reg exception_e;
+  reg [1:0] exception_cause_e;
+  reg mret_e;
 
   reg [XLEN-1:0] rd1_e;
   reg [XLEN-1:0] rd2_e;
   reg [XLEN-1:0] csrd_e;
   reg [XLEN-1:0] pc_e;
-  reg [     4:0] rs1_e;
-  reg [     4:0] rs2_e;
-  reg [    11:0] csrs_e;
-  reg [     4:0] rd_e;
+  reg [4:0] rs1_e;
+  reg [4:0] rs2_e;
+  reg [11:0] csrs_e;
+  reg [4:0] rd_e;
   reg [XLEN-1:0] imm_ext_e;
   reg [XLEN-1:0] pc_plus_4_e;
 
@@ -383,7 +383,7 @@ module cpu #(
       mem_write_e         <= 4'b0000;
       jump_e              <= 0;
       branch_e            <= 0;
-      alu_control_e       <= 5'bxxxxx;
+      alu_control_e       <= 4'bxxxx;
       alu_src_a_e         <= 1'bx;
       alu_src_b_e         <= 2'bxx;
       data_ext_control_e  <= 3'bxxx;

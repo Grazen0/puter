@@ -7,7 +7,7 @@ module cpu_alu #(
 ) (
     input wire [XLEN-1:0] src_a,
     input wire [XLEN-1:0] src_b,
-    input wire [4:0] control,
+    input wire [3:0] control,
 
     output reg  [XLEN-1:0] result,
     output reg             carry,
@@ -19,10 +19,6 @@ module cpu_alu #(
   wire signed [XLEN-1:0] src_b_signed = src_b;
 
   wire [4:0] shamt = src_b[4:0];
-
-  wire [(2*XLEN)-1:0] mul_ss = src_a_signed * src_b_signed;
-  wire [(2*XLEN)-1:0] mul_su = src_a_signed * src_b;
-  wire [(2*XLEN)-1:0] mul_uu = src_a * src_b;
 
   always @(*) begin
     carry    = 0;
@@ -48,14 +44,6 @@ module cpu_alu #(
       `ALU_PASS_A:  result = src_a;
       `ALU_PASS_B:  result = src_b;
       `ALU_AND_NOT: result = src_a & ~src_b;
-      `ALU_MUL:     result = mul_uu[XLEN-1:0];
-      `ALU_MULH:    result = mul_ss[(2*XLEN)-1:XLEN];
-      `ALU_MULHSU:  result = mul_su[(2*XLEN)-1:XLEN];
-      `ALU_MULHU:   result = mul_uu[(2*XLEN)-1:XLEN];
-      `ALU_DIV:     result = src_a_signed / src_b_signed;
-      `ALU_DIVU:    result = src_a / src_b;
-      `ALU_REM:     result = src_a_signed % src_b_signed;
-      `ALU_REMU:    result = src_a % src_b;
       default:      result = {XLEN{1'bx}};
     endcase
   end
