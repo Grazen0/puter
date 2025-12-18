@@ -16,7 +16,7 @@ module cpu_control (
     output reg [3:0] mem_write,
     output reg       jump,
     output reg       branch,
-    output reg [3:0] alu_control,
+    output reg [4:0] alu_control,
     output reg       alu_src_a,
     output reg [1:0] alu_src_b,
     output reg [2:0] imm_src,
@@ -36,7 +36,7 @@ module cpu_control (
     mem_write        = 4'b0000;
     jump             = 0;
     branch           = 0;
-    alu_control      = 4'bxxxx;
+    alu_control      = 5'bxxxxx;
     alu_src_a        = 1'bx;
     alu_src_b        = 2'bxx;
     imm_src          = 3'bxxx;
@@ -66,7 +66,7 @@ module cpu_control (
         imm_src     = `IMM_SRC_I;
         alu_src_a   = `ALU_SRC_A_RD1;
         alu_src_b   = `ALU_SRC_B_IMM;
-        alu_control = {funct7[5] & (funct3 == 3'b101), funct3};
+        alu_control = {1'b0, funct7[5] & (funct3 == 3'b101), funct3};
 
         result_src  = `RESULT_SRC_ALU;
         reg_write   = 1;
@@ -92,11 +92,10 @@ module cpu_control (
         endcase
       end
       7'b0110011: begin  // alu register
-        imm_src     = `IMM_SRC_I;
         alu_src_a   = `ALU_SRC_A_RD1;
         alu_src_b   = `ALU_SRC_B_RD2;
-        alu_control = {funct7[5], funct3};
 
+        alu_control = {funct7[0], funct7[5], funct3};
         result_src  = `RESULT_SRC_ALU;
         reg_write   = 1;
       end
