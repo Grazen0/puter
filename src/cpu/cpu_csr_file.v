@@ -47,7 +47,9 @@ module cpu_csr_file #(
   localparam MCAUSE_INSTR_ADDR_MISALIGNED = {1'b0, 31'd0};
   localparam MCAUSE_ILLEGAL_INSTR = {1'b0, 31'd2};
   localparam MCAUSE_BREAKPOINT = {1'b0, 31'd3};
-  localparam MCAUSE_ECALL = {1'b0, 31'd11};
+  localparam MCAUSE_U_ECALL = {1'b0, 31'd8};
+  localparam MCAUSE_S_ECALL = {1'b0, 31'd9};
+  localparam MCAUSE_M_ECALL = {1'b0, 31'd11};
 
   localparam MCAUSE_MSI = {1'b1, 31'd3};
   localparam MCAUSE_MTI = {1'b1, 31'd7};
@@ -133,7 +135,14 @@ module cpu_csr_file #(
           `EXCAUSE_INSTR_ADDR_MISALIGNED: mcause_next = MCAUSE_INSTR_ADDR_MISALIGNED;
           `EXCAUSE_ILLEGAL_INSTR:         mcause_next = MCAUSE_ILLEGAL_INSTR;
           `EXCAUSE_BREAKPOINT:            mcause_next = MCAUSE_BREAKPOINT;
-          `EXCAUSE_ECALL:                 mcause_next = MCAUSE_ECALL;
+          `EXCAUSE_ECALL: begin
+            case (priv)
+              `PRIV_U: mcause_next = MCAUSE_U_ECALL;
+              `PRIV_S: mcause_next = MCAUSE_S_ECALL;
+              `PRIV_M: mcause_next = MCAUSE_M_ECALL;
+              default: mcause_next = {XLEN{1'bx}};
+            endcase
+          end
           default:                        mcause_next = {XLEN{1'bx}};
         endcase
       end else begin
@@ -176,7 +185,7 @@ module cpu_csr_file #(
       `CSR_MINSTRET:  rdata = minstret[31:0];
       `CSR_MINSTRETH: rdata = minstret[63:32];
 
-      default: rdata = {32{1'bx}};
+      default: rdata = {XLEN{1'bx}};
     endcase
   end
 

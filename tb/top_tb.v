@@ -79,9 +79,9 @@ module top_tb ();
 
     #500_000;
 
-    send_scancode(8'h15);
-    #10_000;
-    send_scancode(8'h42);
+    send_scancode(8'h1C);
+    #50_000 send_scancode(8'hE0);
+    #50_000 send_scancode(8'h75);
 
     #1_000_000;
     $display("");

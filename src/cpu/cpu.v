@@ -77,13 +77,23 @@ module cpu #(
     if (int_ack) begin
       pc_next_f = mtvec_d;
     end else begin
+      // NOTE: it's okay to ignore branch prediction when pc_src_e != pc + 4
+      // because this situation means that the instruction causing the
+      // prediction is about to get flushed, anyways.
       case (pc_src_e)
-        `PC_SRC_PC_PLUS_4: pc_next_f = pc_plus_4_f;
-        `PC_SRC_PC_TARGET: pc_next_f = pc_target_e;
-        `PC_SRC_ALU:       pc_next_f = alu_result_e;
-        `PC_SRC_MTVEC:     pc_next_f = mtvec_e;
-        `PC_SRC_MEPC:      pc_next_f = mepc_e;
-        default:           pc_next_f = {XLEN{1'bx}};
+        `PC_SRC_PC_PLUS_4: begin
+          if (branch_pred_taken_f && branch_target_hit_f) begin
+            pc_next_f = branch_target_addr_f;
+          end else begin
+            pc_next_f = pc_plus_4_f;
+          end
+        end
+        `PC_SRC_PC_TARGET:   pc_next_f = pc_target_e;
+        `PC_SRC_ALU:         pc_next_f = alu_result_e;
+        `PC_SRC_MTVEC:       pc_next_f = mtvec_e;
+        `PC_SRC_MEPC:        pc_next_f = mepc_e;
+        `PC_SRC_PC_PLUS_4_E: pc_next_f = pc_plus_4_e;
+        default:             pc_next_f = {XLEN{1'bx}};
       endcase
     end
   end
@@ -103,8 +113,40 @@ module cpu #(
 
   wire [XLEN-1:0] pc_plus_4_f = pc_f + 4;
 
+  wire branch_pred_taken_f;
+
+  cpu_branch_predictor branch_predictor (
+      .clk  (clk),
+      .rst_n(rst_n),
+
+      .update_addr (pc_e),
+      .update_taken(branch_cond_val_e),
+      .update      (branch_e),
+
+      .branch_addr (pc_f),
+      .branch_taken(branch_pred_taken_f)
+  );
+
+  wire            branch_target_hit_f;
+  wire [XLEN-1:0] branch_target_addr_f;
+
+  cpu_branch_target_buffer branch_target_buffer (
+      .clk  (clk),
+      .rst_n(rst_n),
+
+      .update_addr       (pc_e),
+      .update_target_addr(pc_target_e),
+      .update            (branch_e),
+
+      .branch_addr       (pc_f),
+      .branch_hit        (branch_target_hit_f),
+      .branch_target_addr(branch_target_addr_f)
+  );
+
   // 2. Decode
   reg bubble_d;
+
+  reg branch_pred_taken_d;
 
   reg [XLEN-1:0] instr_d;
   reg [XLEN-1:0] pc_d;
@@ -112,17 +154,21 @@ module cpu #(
 
   always @(posedge clk) begin
     if (!rst_n || flush_d) begin
-      bubble_d    <= 1;
+      bubble_d            <= 1;
 
-      instr_d     <= 32'h0000_0013;  // nop
-      pc_d        <= {XLEN{1'bx}};
-      pc_plus_4_d <= {XLEN{1'bx}};
+      branch_pred_taken_d <= 0;
+
+      instr_d             <= 32'h0000_0013;  // nop
+      pc_d                <= {XLEN{1'bx}};
+      pc_plus_4_d         <= {XLEN{1'bx}};
     end else if (!stall_d) begin
-      bubble_d    <= 0;
+      bubble_d            <= 0;
 
-      instr_d     <= instr_f;
-      pc_d        <= pc_f;
-      pc_plus_4_d <= pc_plus_4_f;
+      branch_pred_taken_d <= branch_pred_taken_f;
+
+      instr_d             <= instr_f;
+      pc_d                <= pc_f;
+      pc_plus_4_d         <= pc_plus_4_f;
     end
   end
 
@@ -288,6 +334,7 @@ module cpu #(
   // 3. Execute
   reg bubble_e;
 
+  reg branch_pred_taken_e;
   reg reg_write_e;
   reg [2:0] result_src_e;
   reg [3:0] mem_write_e;
@@ -320,69 +367,71 @@ module cpu #(
 
   always @(posedge clk) begin
     if (!rst_n || flush_e) begin
-      bubble_e           <= 1;
+      bubble_e            <= 1;
 
-      reg_write_e        <= 0;
-      result_src_e       <= `RESULT_SRC_ALU;
-      mem_write_e        <= 4'b0000;
-      jump_e             <= 0;
-      branch_e           <= 0;
-      alu_control_e      <= 4'bxxxx;
-      alu_src_a_e        <= 1'bx;
-      alu_src_b_e        <= 2'bxx;
-      data_ext_control_e <= 3'bxxx;
-      jump_src_e         <= 0;
-      branch_cond_e      <= 3'bxxx;
-      csr_write_e        <= 0;
-      exception_e        <= 0;
-      exception_cause_e  <= 2'bxx;
-      mret_e             <= 0;
+      branch_pred_taken_e <= 0;
+      reg_write_e         <= 0;
+      result_src_e        <= `RESULT_SRC_ALU;
+      mem_write_e         <= 4'b0000;
+      jump_e              <= 0;
+      branch_e            <= 0;
+      alu_control_e       <= 4'bxxxx;
+      alu_src_a_e         <= 1'bx;
+      alu_src_b_e         <= 2'bxx;
+      data_ext_control_e  <= 3'bxxx;
+      jump_src_e          <= 0;
+      branch_cond_e       <= 3'bxxx;
+      csr_write_e         <= 0;
+      exception_e         <= 0;
+      exception_cause_e   <= 2'bxx;
+      mret_e              <= 0;
 
-      rd1_e              <= {XLEN{1'bx}};
-      rd2_e              <= {XLEN{1'bx}};
-      csrd_e             <= {XLEN{1'bx}};
-      pc_e               <= {XLEN{1'bx}};
-      rs1_e              <= 5'bxxxxx;
-      rs2_e              <= 5'bxxxxx;
-      csrs_e             <= {11{1'bx}};
-      rd_e               <= 5'bxxxxx;
-      imm_ext_e          <= {XLEN{1'bx}};
-      pc_plus_4_e        <= {XLEN{1'bx}};
+      rd1_e               <= {XLEN{1'bx}};
+      rd2_e               <= {XLEN{1'bx}};
+      csrd_e              <= {XLEN{1'bx}};
+      pc_e                <= {XLEN{1'bx}};
+      rs1_e               <= 5'bxxxxx;
+      rs2_e               <= 5'bxxxxx;
+      csrs_e              <= {11{1'bx}};
+      rd_e                <= 5'bxxxxx;
+      imm_ext_e           <= {XLEN{1'bx}};
+      pc_plus_4_e         <= {XLEN{1'bx}};
 
-      mtvec_e            <= {XLEN{1'bx}};
-      mepc_e             <= {XLEN{1'bx}};
+      mtvec_e             <= {XLEN{1'bx}};
+      mepc_e              <= {XLEN{1'bx}};
     end else begin
-      bubble_e           <= bubble_d;
+      bubble_e            <= bubble_d;
 
-      reg_write_e        <= reg_write_d;
-      result_src_e       <= result_src_d;
-      mem_write_e        <= mem_write_d;
-      jump_e             <= jump_d;
-      branch_e           <= branch_d;
-      alu_control_e      <= alu_control_d;
-      alu_src_a_e        <= alu_src_a_d;
-      alu_src_b_e        <= alu_src_b_d;
-      data_ext_control_e <= data_ext_control_d;
-      jump_src_e         <= jump_src_d;
-      branch_cond_e      <= branch_cond_d;
-      csr_write_e        <= csr_write_d;
-      exception_e        <= exception_d;
-      exception_cause_e  <= excause_d;
-      mret_e             <= mret_d;
+      branch_pred_taken_e <= branch_pred_taken_d;
+      reg_write_e         <= reg_write_d;
+      result_src_e        <= result_src_d;
+      mem_write_e         <= mem_write_d;
+      jump_e              <= jump_d;
+      branch_e            <= branch_d;
+      alu_control_e       <= alu_control_d;
+      alu_src_a_e         <= alu_src_a_d;
+      alu_src_b_e         <= alu_src_b_d;
+      data_ext_control_e  <= data_ext_control_d;
+      jump_src_e          <= jump_src_d;
+      branch_cond_e       <= branch_cond_d;
+      csr_write_e         <= csr_write_d;
+      exception_e         <= exception_d;
+      exception_cause_e   <= excause_d;
+      mret_e              <= mret_d;
 
-      rd1_e              <= rd1_d;
-      rd2_e              <= rd2_d;
-      csrd_e             <= csrd_d;
-      pc_e               <= pc_d;
-      rs1_e              <= rs1_d;
-      rs2_e              <= rs2_d;
-      csrs_e             <= csrs_d;
-      rd_e               <= rd_d;
-      imm_ext_e          <= imm_ext_d;
-      pc_plus_4_e        <= pc_plus_4_d;
+      rd1_e               <= rd1_d;
+      rd2_e               <= rd2_d;
+      csrd_e              <= csrd_d;
+      pc_e                <= pc_d;
+      rs1_e               <= rs1_d;
+      rs2_e               <= rs2_d;
+      csrs_e              <= csrs_d;
+      rd_e                <= rd_d;
+      imm_ext_e           <= imm_ext_d;
+      pc_plus_4_e         <= pc_plus_4_d;
 
-      mtvec_e            <= mtvec_d;
-      mepc_e             <= mepc_d;
+      mtvec_e             <= mtvec_d;
+      mepc_e              <= mepc_d;
     end
   end
 
@@ -445,20 +494,23 @@ module cpu #(
   wire [XLEN-1:0] pc_target_e = pc_e + imm_ext_e;
 
   wire [2:0] pc_src_e;
+  wire branch_cond_val_e;
 
   cpu_branch_logic branch_logic (
-      .jump       (jump_e),
-      .jump_src   (jump_src_e),
-      .branch     (branch_e),
-      .branch_cond(branch_cond_e),
-      .exception  (exception_e),
+      .jump             (jump_e),
+      .jump_src         (jump_src_e),
+      .branch           (branch_e),
+      .branch_cond      (branch_cond_e),
+      .branch_pred_taken(branch_pred_taken_e),
+      .exception        (exception_e),
 
       .alu_carry   (alu_carry_e),
       .alu_overflow(alu_overflow_e),
       .alu_zero    (alu_zero_e),
       .alu_neg     (alu_neg_e),
 
-      .pc_src(pc_src_e)
+      .branch_cond_val(branch_cond_val_e),
+      .pc_src         (pc_src_e)
   );
 
   wire [XLEN-1:0] write_data_e = rd2_fw_e;

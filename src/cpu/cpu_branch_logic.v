@@ -8,6 +8,7 @@ module cpu_branch_logic (
     input wire [1:0] jump_src,
     input wire branch,
     input wire [2:0] branch_cond,
+    input wire branch_pred_taken,
     input wire exception,
 
     input wire alu_carry,
@@ -15,10 +16,9 @@ module cpu_branch_logic (
     input wire alu_zero,
     input wire alu_neg,
 
+    output reg branch_cond_val,
     output reg [2:0] pc_src
 );
-  reg  branch_cond_val;
-
   wire alu_lt = alu_neg ^ alu_overflow;
 
   always @(*) begin
@@ -36,7 +36,9 @@ module cpu_branch_logic (
 
     if (exception) begin
       pc_src = `PC_SRC_MTVEC;
-    end else if (jump || (branch && branch_cond_val)) begin
+    end else if (branch && !branch_cond_val && branch_pred_taken) begin
+      pc_src = `PC_SRC_PC_PLUS_4_E;
+    end else if (jump || (branch && branch_cond_val && !branch_pred_taken)) begin
       case (jump_src)
         `JUMP_SRC_PC_TARGET: pc_src = `PC_SRC_PC_TARGET;
         `JUMP_SRC_ALU:       pc_src = `PC_SRC_ALU;
