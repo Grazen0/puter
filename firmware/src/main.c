@@ -61,12 +61,6 @@ void main(void)
         PLIC->int_priority[i] = 1 + i;
     }
 
-    static const char msg[] = "Hello, world!\n";
-    const char *ptr = msg;
-
-    while (*ptr != '\0')
-        uart_write(*ptr++);
-
     printf("Initializing keyboard driver...\n");
     kb_init();
 
@@ -75,8 +69,6 @@ void main(void)
     rv_mstatus_set(MSTATUS_MIE);
 
     printf("\n");
-
-    // rv_jump_umode(kmain);
 
     printf("Wake up, Neo...\n");
     printf("\n");
@@ -89,16 +81,15 @@ void main(void)
         TRAM[i].attr = i << 4;
 
     while (true) {
-        while (kb_scancode_available()) {
-            printf("%02X ", kb_scancode_take());
-            fflush(nullptr);
+        kb_process_queue();
+
+        Key key;
+
+        while (kb_poll_key(&key)) {
+            printf("key: %i, mod: %08X\n", key.code, key.mod);
         }
     }
 }
-
-typedef enum : u8 {
-    MEIID_KEYBOARD = 0,
-} MeiId;
 
 [[gnu::interrupt]] void trap_handler(void)
 {
@@ -117,7 +108,7 @@ typedef enum : u8 {
         PLIC->int_claim[int_id] = 1;
 
         if (int_id == MEIID_KEYBOARD)
-            kb_scancode_push(KEYBOARD->scancode);
+            kb_process_interrupt();
 
         break;
 

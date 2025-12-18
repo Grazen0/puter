@@ -42,6 +42,10 @@ typedef struct {
     volatile u8 int_claim[PLIC_PORTS];
 } Plic;
 
+typedef enum : u8 {
+    MEIID_KEYBOARD = 0,
+} MeiId;
+
 constexpr size_t SCREEN_ROWS = 30;
 constexpr size_t SCREEN_COLS = 80;
 constexpr size_t TRAM_SIZE = SCREEN_ROWS * SCREEN_COLS;

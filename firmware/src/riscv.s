@@ -39,7 +39,7 @@ rv_mie_set:
     ret
 
 rv_jump_umode:
-    # set mstatus.MPP = U-mode
+    # set mstatus.MPP = U-mode (00)
     li      t0, 0x00001800
     csrc    mstatus, t0
 
