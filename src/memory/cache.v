@@ -3,7 +3,7 @@
 module cache #(
     parameter XLEN = 32,
     parameter BYTE_OFFSET = 2,
-    parameter SET_WIDTH = 6,
+    parameter SET_WIDTH = 5,
     parameter N_WIDTH = 1
 ) (
     input wire clk,
