@@ -3,9 +3,15 @@
 `include "cpu_branch_logic.vh"
 `include "cpu_control.vh"
 
-module cpu_branch_logic (
+module cpu_branch_logic #(
+    parameter XLEN = 32
+) (
     input wire jump,
     input wire [1:0] jump_src,
+    input wire jump_target_hit,
+    input wire [XLEN-1:0] pc_jump,
+    input wire [XLEN-1:0] jump_target_addr,
+
     input wire branch,
     input wire [2:0] branch_cond,
     input wire branch_pred_taken,
@@ -20,6 +26,11 @@ module cpu_branch_logic (
     output reg [2:0] pc_src
 );
   wire alu_lt = alu_neg ^ alu_overflow;
+
+  wire jump_required = jump && (!jump_target_hit || pc_jump != jump_target_addr);
+
+  wire branch_required = branch && branch_cond_val && !branch_pred_taken;
+  wire branch_cancel = branch && !branch_cond_val && branch_pred_taken;
 
   always @(*) begin
     pc_src = `PC_SRC_PC_PLUS_4;
@@ -36,16 +47,10 @@ module cpu_branch_logic (
 
     if (exception) begin
       pc_src = `PC_SRC_MTVEC;
-    end else if (branch && !branch_cond_val && branch_pred_taken) begin
+    end else if (branch_cancel) begin
       pc_src = `PC_SRC_PC_PLUS_4_E;
-    end else if (jump || (branch && branch_cond_val && !branch_pred_taken)) begin
-      case (jump_src)
-        `JUMP_SRC_PC_TARGET: pc_src = `PC_SRC_PC_TARGET;
-        `JUMP_SRC_ALU:       pc_src = `PC_SRC_ALU;
-        `JUMP_SRC_MTVEC:     pc_src = `PC_SRC_MTVEC;
-        `JUMP_SRC_MEPC:      pc_src = `PC_SRC_MEPC;
-        default:             pc_src = 2'bxx;
-      endcase
+    end else if (jump_required || branch_required) begin
+      pc_src = `PC_SRC_JUMP;
     end
   end
 endmodule

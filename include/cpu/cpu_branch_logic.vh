@@ -2,11 +2,9 @@
 `define PUTER_CPU_BRANCH_LOGIC_VH
 
 `define PC_SRC_PC_PLUS_4 3'd0
-`define PC_SRC_PC_TARGET 3'd1
-`define PC_SRC_ALU 3'd2
-`define PC_SRC_MTVEC 3'd3
-`define PC_SRC_MEPC 3'd4
-`define PC_SRC_PC_PLUS_4_E 3'd5
+`define PC_SRC_MTVEC 3'd1
+`define PC_SRC_PC_PLUS_4_E 3'd2
+`define PC_SRC_JUMP 3'd3
 
 `define BRANCH_COND_EQ 3'b000
 `define BRANCH_COND_NE 3'b001

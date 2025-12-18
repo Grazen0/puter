@@ -74,25 +74,25 @@ module cpu #(
   reg [XLEN-1:0] pc_next_f;
 
   always @(*) begin
+    // NOTE: it's okay to ignore branch prediction when pc_src_e != pc + 4
+    // because this situation means that the instruction causing the
+    // prediction is about to get flushed, anyways.
     if (int_ack) begin
       pc_next_f = mtvec_d;
     end else begin
-      // NOTE: it's okay to ignore branch prediction when pc_src_e != pc + 4
-      // because this situation means that the instruction causing the
-      // prediction is about to get flushed, anyways.
       case (pc_src_e)
         `PC_SRC_PC_PLUS_4: begin
-          if (branch_pred_taken_f && branch_target_hit_f) begin
+          if (branch_pred_taken_f) begin
             pc_next_f = branch_target_addr_f;
+          end else if (jump_target_hit_f) begin
+            pc_next_f = jump_target_addr_f;
           end else begin
             pc_next_f = pc_plus_4_f;
           end
         end
-        `PC_SRC_PC_TARGET:   pc_next_f = pc_target_e;
-        `PC_SRC_ALU:         pc_next_f = alu_result_e;
-        `PC_SRC_MTVEC:       pc_next_f = mtvec_e;
-        `PC_SRC_MEPC:        pc_next_f = mepc_e;
         `PC_SRC_PC_PLUS_4_E: pc_next_f = pc_plus_4_e;
+        `PC_SRC_MTVEC:       pc_next_f = mtvec_e;
+        `PC_SRC_JUMP:        pc_next_f = pc_jump_e;
         default:             pc_next_f = {XLEN{1'bx}};
       endcase
     end
@@ -113,7 +113,7 @@ module cpu #(
 
   wire [XLEN-1:0] pc_plus_4_f = pc_f + 4;
 
-  wire branch_pred_taken_f;
+  wire branch_pred_take_f;
 
   cpu_branch_predictor branch_predictor (
       .clk  (clk),
@@ -124,8 +124,10 @@ module cpu #(
       .update      (branch_e),
 
       .branch_addr (pc_f),
-      .branch_taken(branch_pred_taken_f)
+      .branch_taken(branch_pred_take_f)
   );
+
+  wire            branch_pred_taken_f = branch_pred_take_f && branch_target_hit_f;
 
   wire            branch_target_hit_f;
   wire [XLEN-1:0] branch_target_addr_f;
@@ -135,7 +137,7 @@ module cpu #(
       .rst_n(rst_n),
 
       .update_addr       (pc_e),
-      .update_target_addr(pc_target_e),
+      .update_target_addr(pc_jump_e),
       .update            (branch_e),
 
       .branch_addr       (pc_f),
@@ -143,10 +145,28 @@ module cpu #(
       .branch_target_addr(branch_target_addr_f)
   );
 
-  // 2. Decode
-  reg bubble_d;
+  wire            jump_target_hit_f;
+  wire [XLEN-1:0] jump_target_addr_f;
 
-  reg branch_pred_taken_d;
+  cpu_branch_target_buffer jump_target_buffer (
+      .clk  (clk),
+      .rst_n(rst_n),
+
+      .update_addr       (pc_e),
+      .update_target_addr(pc_jump_e),
+      .update            (jump_e),
+
+      .branch_addr       (pc_f),
+      .branch_hit        (jump_target_hit_f),
+      .branch_target_addr(jump_target_addr_f)
+  );
+
+  // 2. Decode
+  reg            bubble_d;
+
+  reg            branch_pred_taken_d;
+  reg            jump_target_hit_d;
+  reg [XLEN-1:0] jump_target_addr_d;
 
   reg [XLEN-1:0] instr_d;
   reg [XLEN-1:0] pc_d;
@@ -157,6 +177,8 @@ module cpu #(
       bubble_d            <= 1;
 
       branch_pred_taken_d <= 0;
+      jump_target_hit_d   <= 0;
+      jump_target_addr_d  <= {XLEN{1'bx}};
 
       instr_d             <= 32'h0000_0013;  // nop
       pc_d                <= {XLEN{1'bx}};
@@ -165,6 +187,8 @@ module cpu #(
       bubble_d            <= 0;
 
       branch_pred_taken_d <= branch_pred_taken_f;
+      jump_target_hit_d   <= jump_target_hit_f;
+      jump_target_addr_d  <= jump_target_addr_f;
 
       instr_d             <= instr_f;
       pc_d                <= pc_f;
@@ -335,6 +359,8 @@ module cpu #(
   reg bubble_e;
 
   reg branch_pred_taken_e;
+  reg jump_target_hit_e;
+  reg [XLEN-1:0] jump_target_addr_e;
   reg reg_write_e;
   reg [2:0] result_src_e;
   reg [3:0] mem_write_e;
@@ -370,6 +396,9 @@ module cpu #(
       bubble_e            <= 1;
 
       branch_pred_taken_e <= 0;
+      jump_target_hit_e   <= 0;
+      jump_target_addr_e  <= {XLEN{1'bx}};
+
       reg_write_e         <= 0;
       result_src_e        <= `RESULT_SRC_ALU;
       mem_write_e         <= 4'b0000;
@@ -403,6 +432,9 @@ module cpu #(
       bubble_e            <= bubble_d;
 
       branch_pred_taken_e <= branch_pred_taken_d;
+      jump_target_hit_e   <= jump_target_hit_d;
+      jump_target_addr_e  <= jump_target_addr_d;
+
       reg_write_e         <= reg_write_d;
       result_src_e        <= result_src_d;
       mem_write_e         <= mem_write_d;
@@ -496,9 +528,25 @@ module cpu #(
   wire [2:0] pc_src_e;
   wire branch_cond_val_e;
 
+  reg [XLEN-1:0] pc_jump_e;
+
+  always @(*) begin
+    case (jump_src_e)
+      `JUMP_SRC_PC_TARGET: pc_jump_e = pc_target_e;
+      `JUMP_SRC_ALU:       pc_jump_e = alu_result_e;
+      `JUMP_SRC_MTVEC:     pc_jump_e = mtvec_e;
+      `JUMP_SRC_MEPC:      pc_jump_e = mepc_e;
+      default:             pc_jump_e = {XLEN{1'bx}};
+    endcase
+  end
+
   cpu_branch_logic branch_logic (
-      .jump             (jump_e),
-      .jump_src         (jump_src_e),
+      .jump            (jump_e),
+      .jump_src        (jump_src_e),
+      .jump_target_hit (jump_target_hit_e),
+      .pc_jump         (pc_jump_e),
+      .jump_target_addr(jump_target_addr_e),
+
       .branch           (branch_e),
       .branch_cond      (branch_cond_e),
       .branch_pred_taken(branch_pred_taken_e),
