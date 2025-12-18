@@ -73,6 +73,9 @@ module cpu #(
   // 1. Fetch
   reg [XLEN-1:0] pc_next_f;
 
+  wire branch_f = instr_f[6:0] == 7'b1100011;
+  wire jump_pred_cond = branch_f ? branch_pred_taken_f : jump_target_hit_f;
+
   always @(*) begin
     // NOTE: it's okay to ignore branch prediction when pc_src_e != pc + 4
     // because this situation means that the instruction causing the
@@ -81,15 +84,7 @@ module cpu #(
       pc_next_f = mtvec_d;
     end else begin
       case (pc_src_e)
-        `PC_SRC_PC_PLUS_4: begin
-          if (branch_pred_taken_f) begin
-            pc_next_f = branch_target_addr_f;
-          end else if (jump_target_hit_f) begin
-            pc_next_f = jump_target_addr_f;
-          end else begin
-            pc_next_f = pc_plus_4_f;
-          end
-        end
+        `PC_SRC_PC_PLUS_4:   pc_next_f = jump_pred_cond ? jump_target_addr_f : pc_plus_4_f;
         `PC_SRC_PC_PLUS_4_E: pc_next_f = pc_plus_4_e;
         `PC_SRC_MTVEC:       pc_next_f = mtvec_e;
         `PC_SRC_JUMP:        pc_next_f = pc_jump_e;
@@ -123,42 +118,26 @@ module cpu #(
       .update_taken(branch_cond_val_e),
       .update      (branch_e),
 
-      .branch_addr (pc_f),
-      .branch_taken(branch_pred_take_f)
+      .addr (pc_f),
+      .taken(branch_pred_take_f)
   );
 
-  wire            branch_pred_taken_f = branch_pred_take_f & branch_target_hit_f;
-
-  wire            branch_target_hit_f;
-  wire [XLEN-1:0] branch_target_addr_f;
-
-  cpu_branch_target_buffer branch_target_buffer (
-      .clk  (clk),
-      .rst_n(rst_n),
-
-      .update_addr       (pc_e),
-      .update_target_addr(pc_jump_e),
-      .update            (branch_e),
-
-      .addr       (pc_f),
-      .hit        (branch_target_hit_f),
-      .target_addr(branch_target_addr_f)
-  );
+  wire            branch_pred_taken_f = branch_pred_take_f & jump_target_hit_f;
 
   wire            jump_target_hit_f;
   wire [XLEN-1:0] jump_target_addr_f;
 
-  cpu_branch_target_buffer jump_target_buffer (
+  cache jump_target_buffer (
       .clk  (clk),
       .rst_n(rst_n),
 
-      .update_addr       (pc_e),
-      .update_target_addr(pc_jump_e),
-      .update            (jump_e),
+      .update_addr(pc_e),
+      .update_data(pc_jump_e),
+      .update     (jump_e | branch_e),
 
-      .addr       (pc_f),
-      .hit        (jump_target_hit_f),
-      .target_addr(jump_target_addr_f)
+      .addr    (pc_f),
+      .hit     (jump_target_hit_f),
+      .out_data(jump_target_addr_f)
   );
 
   // 2. Decode
