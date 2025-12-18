@@ -506,7 +506,7 @@ module cpu #(
 
   wire [XLEN-1:0] pc_target_e = pc_e + imm_ext_e;
 
-  wire [2:0] pc_src_e;
+  wire [1:0] pc_src_e;
   wire branch_cond_val_e;
 
   reg [XLEN-1:0] pc_jump_e;
@@ -650,8 +650,6 @@ module cpu #(
   reg [XLEN-1:0] read_data_w;
   reg [    11:0] csrs_w;
   reg [     4:0] rd_w;
-  reg [XLEN-1:0] pc_plus_4_w;
-  reg [XLEN-1:0] pc_target_w;
 
   always @(posedge clk) begin
     if (!rst_n) begin
@@ -670,8 +668,6 @@ module cpu #(
       read_data_w       <= {XLEN{1'bx}};
       csrs_w            <= {11{1'bx}};
       rd_w              <= 5'bxxxxx;
-      pc_plus_4_w       <= {XLEN{1'bx}};
-      pc_target_w       <= {XLEN{1'bx}};
     end else begin
       bubble_w          <= bubble_m;
 
@@ -688,8 +684,6 @@ module cpu #(
       read_data_w       <= read_data_m;
       csrs_w            <= csrs_m;
       rd_w              <= rd_m;
-      pc_plus_4_w       <= pc_plus_4_m;
-      pc_target_w       <= pc_target_m;
     end
   end
 

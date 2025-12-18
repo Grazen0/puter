@@ -19,8 +19,8 @@ module cpu_branch_predictor_tb ();
       .update_taken(update_taken),
       .update      (update),
 
-      .branch_addr (branch_addr),
-      .branch_taken(branch_take)
+      .addr (branch_addr),
+      .taken(branch_take)
   );
 
   initial begin

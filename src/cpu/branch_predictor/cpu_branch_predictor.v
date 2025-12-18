@@ -4,8 +4,8 @@ module cpu_branch_predictor #(
     parameter XLEN = 32,
     parameter CTR_WIDTH = 3,
     parameter BYTE_OFFSET = 2,
-    parameter SET_WIDTH = 8,
-    parameter N_WIDTH = 4
+    parameter SET_WIDTH = 6,
+    parameter N_WIDTH = 1
 ) (
     input wire clk,
     input wire rst_n,

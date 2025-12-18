@@ -13,7 +13,7 @@ module cpu_hazard_unit (
     input wire [ 4:0] rs2_e,
     input wire [ 4:0] rd_e,
     input wire [11:0] csrs_e,
-    input wire [ 2:0] pc_src_e,
+    input wire [ 1:0] pc_src_e,
     input wire [ 2:0] result_src_e,
     input wire        csr_write_e,
     input wire        exception_e,

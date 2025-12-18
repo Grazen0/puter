@@ -3,8 +3,8 @@
 module cache #(
     parameter XLEN = 32,
     parameter BYTE_OFFSET = 2,
-    parameter SET_WIDTH = 8,
-    parameter N_WIDTH = 4
+    parameter SET_WIDTH = 6,
+    parameter N_WIDTH = 1
 ) (
     input wire clk,
     input wire rst_n,
@@ -21,6 +21,7 @@ module cache #(
 
   localparam TAG_WIDTH = XLEN - BYTE_OFFSET - SET_WIDTH;
   localparam SETS = 2 ** SET_WIDTH;
+
 
   reg [     XLEN-1:0] data [0:SETS-1] [0:N-1];
   reg [TAG_WIDTH-1:0] tags [0:SETS-1] [0:N-1];

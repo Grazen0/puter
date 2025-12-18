@@ -23,7 +23,7 @@ module cpu_branch_logic #(
     input wire alu_neg,
 
     output reg branch_cond_val,
-    output reg [2:0] pc_src
+    output reg [1:0] pc_src
 );
   wire alu_lt = alu_neg ^ alu_overflow;
 
