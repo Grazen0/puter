@@ -4,9 +4,6 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-static constexpr size_t TAB_WIDTH = 4;
-static constexpr u16 VVALUE_EMPTY = 0;
-
 typedef enum : u8 {
     ATTR_FG_BLACK = 0x00,
     ATTR_FG_BLUE = 0x01,
@@ -42,6 +39,9 @@ typedef enum : u8 {
     ATTR_BG_BRIGHT_YELLOW = 0xE0,
     ATTR_BG_WHITE = 0xF0,
 } TextAttr;
+
+static constexpr size_t TAB_WIDTH = 4;
+static constexpr u16 VVALUE_EMPTY = (ATTR_FG_WHITE | ATTR_BG_BLACK) << 8;
 
 typedef struct {
     size_t tram_idx;
@@ -110,6 +110,8 @@ void vga_print_char(const char ch)
         scroll();
         ctx.tram_idx = (SCREEN_ROWS - 1) * SCREEN_COLS;
     }
+
+    VREGS->cursor_pos = ctx.tram_idx;
 }
 
 void vga_print(const char *s)

@@ -1,16 +1,25 @@
 `default_nettype none `timescale 1ns / 1ps
 
 module video_unit #(
-    parameter FONT_DATA = "/home/jdgt/Code/verilog/puter/build/unscii-16.mem"
+    parameter FONT_DATA = ""
 ) (
     input wire sys_clk,
     input wire vga_clk,
     input wire rst_n,
 
-    input wire [$clog2(2 * TRAM_SIZE)-1:0] tram_addr,
+    input wire [TRAM_WIDTH:0] tram_addr,
     input wire [15:0] tram_wdata,
     input wire [1:0] tram_wenable,
     output wire [15:0] tram_rdata,
+
+    // 00: cursor_enabled
+    // 10: cursor_pos
+    // 01: cursor_start_scanline
+    // 01: cursor_end_scanline
+    input  wire [ 1:0] reg_sel,
+    input  wire [15:0] reg_wdata,
+    input  wire        reg_wenable,
+    output reg  [15:0] reg_rdata,
 
     output wire [3:0] vga_red,
     output wire [3:0] vga_green,
@@ -42,6 +51,9 @@ module video_unit #(
   localparam ROWS = HEIGHT / CHAR_HEIGHT;
   localparam COLS = WIDTH / CHAR_WIDTH;
   localparam TRAM_SIZE = ROWS * COLS;
+  localparam TRAM_WIDTH = $clog2(TRAM_SIZE);
+
+  localparam CURSOR_BLINK_PERIOD = 60;
 
   localparam PALETTE_SIZE = 16;
 
@@ -80,7 +92,7 @@ module video_unit #(
       .wenable_1(tram_wenable),
       .rdata_1  (tram_rdata),
 
-      .addr_2 ({char_idx, 1'b0}),
+      .addr_2 ({tram_pos, 1'b0}),
       .rdata_2(active_entry)
   );
 
@@ -92,7 +104,17 @@ module video_unit #(
   reg v_sync_next;
   reg [11:0] cur_color;
 
+  reg cursor_enabled;
+  reg [TRAM_WIDTH-1:0] cursor_pos;
+  reg [$clog2(CURSOR_BLINK_PERIOD)-1:0] cursor_blink_ctr, cursor_blink_ctr_next;
+  reg [3:0] cursor_start_scanline;
+  reg [3:0] cursor_end_scanline;
+
+  wire cursor_show = cursor_blink_ctr < (CURSOR_BLINK_PERIOD / 2);
+
   always @(*) begin
+    cursor_blink_ctr_next = cursor_blink_ctr;
+
     y_pos_next = y_pos;
     x_pos_next = x_pos + 1;
 
@@ -111,8 +133,14 @@ module video_unit #(
         v_visible_next = 0;
       end else if (y_pos_next == V_FRAME) begin
         // Next frame
-        v_visible_next = 1;
-        y_pos_next     = 0;
+        v_visible_next        = 1;
+        y_pos_next            = 0;
+
+        cursor_blink_ctr_next = cursor_blink_ctr + 1;
+
+        if (cursor_blink_ctr_next == CURSOR_BLINK_PERIOD) begin
+          cursor_blink_ctr_next = 0;
+        end
       end
     end
 
@@ -131,47 +159,92 @@ module video_unit #(
 
   always @(posedge vga_clk) begin
     if (!rst_n) begin
-      x_pos     <= 0;
-      y_pos     <= 0;
-      h_sync    <= 1;
-      v_sync    <= 1;
-      h_visible <= 1;
-      v_visible <= 1;
-      cur_color <= 12'h000;
+      x_pos            <= 0;
+      y_pos            <= 0;
+      h_sync           <= 1;
+      v_sync           <= 1;
+      h_visible        <= 1;
+      v_visible        <= 1;
+      cur_color        <= 12'h000;
+      cursor_blink_ctr <= 0;
     end else begin
-      x_pos     <= x_pos_next;
-      y_pos     <= y_pos_next;
-      h_sync    <= h_sync_next;
-      v_sync    <= v_sync_next;
-      h_visible <= h_visible_next;
-      v_visible <= v_visible_next;
-      cur_color <= cur_color_next;
+      x_pos            <= x_pos_next;
+      y_pos            <= y_pos_next;
+      h_sync           <= h_sync_next;
+      v_sync           <= v_sync_next;
+      h_visible        <= h_visible_next;
+      v_visible        <= v_visible_next;
+      cur_color        <= cur_color_next;
+      cursor_blink_ctr <= cursor_blink_ctr_next;
+    end
+  end
+
+  always @(posedge sys_clk) begin
+    if (!rst_n) begin
+      cursor_enabled        <= 1;
+      cursor_pos            <= 0;
+      cursor_start_scanline <= 0;
+      cursor_end_scanline   <= 15;
+    end else begin
+      if (reg_wenable) begin
+        case (reg_sel)
+          2'b00: cursor_enabled <= reg_wdata[0];
+          2'b01: cursor_pos <= reg_wdata[TRAM_WIDTH-1:0];
+          2'b10: cursor_start_scanline <= reg_wdata[3:0];
+          2'b11: cursor_end_scanline <= reg_wdata[3:0];
+          default: begin
+          end
+        endcase
+      end
     end
   end
 
   wire [$clog2(COLS)-1:0] col = x_pos_next[3+:$clog2(COLS)];
   wire [$clog2(ROWS)-1:0] row = y_pos_next[4+:$clog2(ROWS)];
 
-  wire [$clog2(TRAM_SIZE)-1:0] char_idx = (row * COLS) + col;
+  wire [TRAM_WIDTH-1:0] tram_pos = (row * COLS) + col;
 
   wire [2:0] char_x = x_pos_next[2:0];
   wire [3:0] char_y = y_pos_next[3:0];
 
-  wire [7:0] active_attr;
-  wire [7:0] active_char;
+  wire [7:0] cur_attr;
+  wire [7:0] cur_char;
 
-  assign {active_attr, active_char} = active_entry;
+  assign {cur_attr, cur_char} = active_entry;
 
-  wire [3:0] fg_color_idx = active_attr[3:0];
-  wire [3:0] bg_color_idx = active_attr[7:4];
+  wire [3:0] fg_color_idx = cur_attr[3:0];
+  wire [3:0] bg_color_idx = cur_attr[7:4];
 
   wire [11:0] fg_color = palette[fg_color_idx];
   wire [11:0] bg_color = palette[bg_color_idx];
 
-  wire [$clog2(FONT_RAM_SIZE)-1:0] byte_idx = (CHAR_SIZE * active_char) + char_y;
+  wire [$clog2(FONT_RAM_SIZE)-1:0] byte_idx = (CHAR_SIZE * cur_char) + char_y;
 
   wire [7:0] cur_byte = font_ram[byte_idx];
-  wire cur_pixel = cur_byte[7-char_x];
+
+  reg cur_pixel;
+
+  always @(*) begin
+    cur_pixel = cur_byte[7-char_x];
+
+    if (
+      cursor_enabled
+      && cursor_show
+      && tram_pos == cursor_pos
+      && char_y >= cursor_start_scanline
+      && char_y <= cursor_end_scanline
+    ) begin
+      cur_pixel = ~cur_pixel;
+    end
+
+    case (reg_sel)
+      2'b00:   reg_rdata = cursor_enabled;
+      2'b01:   reg_rdata = cursor_pos;
+      2'b10:   reg_rdata = cursor_start_scanline;
+      2'b11:   reg_rdata = cursor_end_scanline;
+      default: reg_rdata = {TRAM_WIDTH{1'bx}};
+    endcase
+  end
 
   wire [11:0] cur_color_next = cur_pixel ? fg_color : bg_color;
 

@@ -20,14 +20,15 @@ module puter (
 );
   localparam MEI_PORTS = 2;
 
-  localparam DATA_SEL_ROM = 3'd0;
-  localparam DATA_SEL_RAM = 3'd1;
-  localparam DATA_SEL_TRAM = 3'd2;
-  localparam DATA_SEL_RTC = 3'd3;
-  localparam DATA_SEL_PLIC = 3'd4;
-  localparam DATA_SEL_MEI_ID = 3'd5;
-  localparam DATA_SEL_KEYBOARD_DATA = 3'd6;
-  localparam DATA_SEL_UART = 3'd7;
+  localparam DATA_SEL_ROM = 4'd0;
+  localparam DATA_SEL_RAM = 4'd1;
+  localparam DATA_SEL_TRAM = 4'd2;
+  localparam DATA_SEL_RTC = 4'd3;
+  localparam DATA_SEL_PLIC = 4'd4;
+  localparam DATA_SEL_MEI_ID = 4'd5;
+  localparam DATA_SEL_KEYBOARD_DATA = 4'd6;
+  localparam DATA_SEL_UART = 4'd7;
+  localparam DATA_SEL_VREGS = 4'd8;
 
   wire [31:0] instr_addr;
   wire [31:0] instr_rdata;
@@ -55,13 +56,14 @@ module puter (
       .mei_pending(mei_pending)
   );
 
-  reg [2:0] data_sel;
+  reg [3:0] data_sel;
 
   always @(*) begin
     casez (data_addr[31:27])
       5'b0zzz_z: data_sel = DATA_SEL_ROM;
       5'b10zz_z: data_sel = DATA_SEL_RAM;
-      5'b1100_z: data_sel = DATA_SEL_TRAM;
+      5'b1100_0: data_sel = DATA_SEL_TRAM;
+      5'b1100_1: data_sel = DATA_SEL_VREGS;
       5'b1101_z: data_sel = DATA_SEL_UART;
       5'b1110_0: data_sel = DATA_SEL_RTC;
       5'b1110_1: data_sel = DATA_SEL_KEYBOARD_DATA;
@@ -74,6 +76,7 @@ module puter (
       DATA_SEL_ROM:           data_rdata = rom_rdata;
       DATA_SEL_RAM:           data_rdata = ram_rdata;
       DATA_SEL_TRAM:          data_rdata = tram_rdata;
+      DATA_SEL_VREGS:         data_rdata = vregs_rdata;
       DATA_SEL_UART:          data_rdata = uart_ready;
       DATA_SEL_RTC:           data_rdata = rtc_rdata;
       DATA_SEL_PLIC:          data_rdata = plic_rdata;
@@ -108,7 +111,11 @@ module puter (
 
   wire [15:0] tram_rdata;
 
-  video_unit video_unit (
+  wire [15:0] vregs_rdata;
+
+  video_unit #(
+      .FONT_DATA("/home/jdgt/Code/verilog/puter/build/unscii-16.mem")
+  ) video_unit (
       .sys_clk(sys_clk),
       .vga_clk(vga_clk),
       .rst_n  (rst_n),
@@ -117,6 +124,11 @@ module puter (
       .tram_wdata  (data_wdata[15:0]),
       .tram_wenable(data_wenable[1:0] & {2{data_sel == DATA_SEL_TRAM}}),
       .tram_rdata  (tram_rdata),
+
+      .reg_sel    (data_addr[2:1]),
+      .reg_wdata  (data_wdata[15:0]),
+      .reg_wenable(|data_wenable[1:0] & data_sel == DATA_SEL_VREGS),
+      .reg_rdata  (vregs_rdata),
 
       .vga_red  (vga_red),
       .vga_green(vga_green),
