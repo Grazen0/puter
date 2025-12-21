@@ -14,7 +14,12 @@ module top (
     input wire ps2_clk,
 
     input  wire rs_rx,
-    output wire rs_tx
+    output wire rs_tx,
+
+    output wire sd_sclk,
+    output wire sd_cs,
+    input  wire sd_miso,
+    output wire sd_mosi
 );
 
   wire sys_clk;
@@ -80,6 +85,11 @@ module top (
       .ps2_data(ps2_data),
 
       .rs_rx(rs_rx),
-      .rs_tx(rs_tx)
+      .rs_tx(rs_tx),
+
+      .sd_sclk(sd_sclk),
+      .sd_cs  (sd_cs),
+      .sd_miso(sd_miso),
+      .sd_mosi(sd_mosi)
   );
 endmodule

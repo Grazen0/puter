@@ -4,6 +4,8 @@
 #include "numeric.h"
 #include <stddef.h>
 
+constexpr size_t SYS_CLK_FREQ = 50'000'000U;
+
 typedef struct {
     volatile char out;
 } DebugControl;
@@ -18,19 +20,31 @@ typedef union {
 
 typedef struct {
     volatile bool cursor_enabled;
-    u8 _padding_0;
+    const u8 _padding_0;
     volatile u16 cursor_pos;
     volatile u8 cursor_start_scanline;
-    u8 _padding_1;
+    const u8 _padding_1;
     volatile u8 cursor_end_scanline;
 } VideoRegisters;
 
-typedef struct {
-    union {
-        volatile u8 out;
-        volatile bool ready;
-    };
+typedef union {
+    volatile const bool ready;
+    volatile u8 out;
 } Uart;
+
+typedef union {
+    struct {
+        volatile const bool ready;
+        volatile const bool rdata_valid;
+        volatile const u8 rdata;
+    };
+    struct {
+        volatile u8 cs;
+        volatile u8 sclk_half_period;
+        volatile u8 out;
+        volatile u8 start_read;
+    };
+} Spi;
 
 constexpr size_t RTC_FREQ = 100'000'000U;
 
@@ -40,7 +54,7 @@ typedef struct {
 } RealTimeCounter;
 
 typedef struct {
-    volatile u8 scancode;
+    volatile const u8 scancode;
 } Keyboard;
 
 constexpr size_t PLIC_PORTS = 2;
@@ -63,6 +77,7 @@ constexpr size_t DBG_BASE = 0x1000'0000U;
 constexpr size_t TRAM_BASE = 0xC000'0000U;
 constexpr size_t VREGS_BASE = 0xC800'0000U;
 constexpr size_t UART_BASE = 0xD000'0000U;
+constexpr size_t SPI_BASE = 0xD800'0000U;
 constexpr size_t RTC_BASE = 0xE000'0000U;
 constexpr size_t KEYBOARD_BASE = 0xE800'0000U;
 constexpr size_t PLIC_BASE = 0xF000'0000U;
@@ -72,6 +87,7 @@ constexpr size_t MEIID_BASE = 0xF800'0000U;
 #define TRAM ((TRamEntry *)TRAM_BASE)
 #define VREGS ((VideoRegisters *)VREGS_BASE)
 #define UART ((Uart *)UART_BASE)
+#define SPI ((Spi *)SPI_BASE)
 #define RTC ((RealTimeCounter *)RTC_BASE)
 #define KEYBOARD ((Keyboard *)KEYBOARD_BASE)
 #define PLIC ((Plic *)PLIC_BASE)

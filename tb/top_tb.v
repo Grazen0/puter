@@ -1,7 +1,7 @@
 `default_nettype none `timescale 1ns / 1ps
 
 module top_tb ();
-  reg clk, rst_n, ps2_clk, ps2_data, rs_rx;
+  reg clk, rst_n, ps2_clk, ps2_data, rs_rx, sd_miso;
   always #5 clk = ~clk;
 
   wire [3:0] vga_red;
@@ -11,6 +11,7 @@ module top_tb ();
   wire v_sync;
 
   wire rs_tx;
+  wire sd_sclk, sd_cs, sd_mosi;
 
   top top (
       .clk  (clk),
@@ -26,7 +27,12 @@ module top_tb ();
       .v_sync   (v_sync),
 
       .rs_rx(rs_rx),
-      .rs_tx(rs_tx)
+      .rs_tx(rs_tx),
+
+      .sd_sclk(sd_sclk),
+      .sd_cs  (sd_cs),
+      .sd_miso(sd_miso),
+      .sd_mosi(sd_mosi)
   );
 
   always @(posedge top.sys_clk) begin
@@ -77,7 +83,16 @@ module top_tb ();
 
     $display("");
 
-    #500_000;
+    @(posedge sd_sclk);
+    sd_miso = 1;
+
+    repeat (4) begin
+      @(negedge sd_sclk);
+    end
+
+    sd_miso = 0;
+
+    #500_000 $finish();
 
     send_scancode(8'h1C);
     #50_000 send_scancode(8'hE0);
