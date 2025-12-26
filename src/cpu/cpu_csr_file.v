@@ -57,9 +57,20 @@ module cpu_csr_file #(
 
   reg [1:0] priv_next;
 
+  reg [63:0] sstatus, sstatus_next;
+  reg [XLEN-1:0] sie, sie_next;
+  reg [XLEN-1:0] stvec_next;
+
+  reg [XLEN-1:0] sscratch, sscratch_next;
+  reg [XLEN-1:0] sepc, sepc_next;
+  reg [XLEN-1:0] scause, scause_next;
+  reg [XLEN-1:0] sip;
+
+
   reg [63:0] mstatus, mstatus_next;
   reg [XLEN-1:0] mie, mie_next;
   reg [XLEN-1:0] mtvec_next;
+  reg [XLEN-1:0] mcounteren, mcounteren_next;
 
   reg [XLEN-1:0] mscratch, mscratch_next;
   reg [XLEN-1:0] mepc_next;
@@ -163,8 +174,8 @@ module cpu_csr_file #(
     end
 
     // read-only mstatus fields
-    mstatus_next[37]           = 0;
-    mstatus_next[36]           = 0;
+    mstatus_next[`MSTATUS_MBE] = 0;
+    mstatus_next[`MSTATUS_SBE] = 0;
     mstatus_next[`MSTATUS_SXL] = XLEN == 32 ? 2'd1 : 2'd2;
     mstatus_next[`MSTATUS_UXL] = XLEN == 32 ? 2'd1 : 2'd2;
     mstatus_next[`MSTATUS_XS]  = 0;
@@ -193,9 +204,9 @@ module cpu_csr_file #(
     if (!rst_n) begin
       priv                   <= `PRIV_M;
 
-      mstatus[38]            <= 0;
-      mstatus[37]            <= 0;
-      mstatus[36]            <= 0;
+      mstatus[`MSTATUS_GVA]  <= 0;
+      mstatus[`MSTATUS_MBE]  <= 0;  // M-mode endianness = little endian
+      mstatus[`MSTATUS_SBE]  <= 0;  // S-mode endianness = little endian
       mstatus[`MSTATUS_SXL]  <= XLEN == 32 ? 2'd1 : 2'd2;
       mstatus[`MSTATUS_UXL]  <= XLEN == 32 ? 2'd1 : 2'd2;
       mstatus[`MSTATUS_MPRV] <= 0;
@@ -203,21 +214,23 @@ module cpu_csr_file #(
       mstatus[`MSTATUS_MPP]  <= `PRIV_M;
       mstatus[`MSTATUS_MIE]  <= 0;
       mie                    <= {XLEN{1'b0}};
+      mcounteren             <= {XLEN{1'b0}};
 
       mcycle                 <= 0;
     end else begin
-      priv     <= priv_next;
+      priv       <= priv_next;
 
-      mstatus  <= mstatus_next;
-      mie      <= mie_next;
-      mtvec    <= mtvec_next;
+      mstatus    <= mstatus_next;
+      mie        <= mie_next;
+      mtvec      <= mtvec_next;
+      mcounteren <= mcounteren_next;
 
-      mscratch <= mscratch_next;
-      mepc     <= mepc_next;
-      mcause   <= mcause_next;
+      mscratch   <= mscratch_next;
+      mepc       <= mepc_next;
+      mcause     <= mcause_next;
 
-      mcycle   <= mcycle_next;
-      minstret <= minstret_next;
+      mcycle     <= mcycle_next;
+      minstret   <= minstret_next;
     end
   end
 

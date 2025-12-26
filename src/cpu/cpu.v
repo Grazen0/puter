@@ -40,7 +40,6 @@ module cpu #(
 
       .rs2_e       (rs2_e),
       .rd_e        (rd_e),
-      .csrs_e      (csrs_e),
       .pc_src_e    (pc_src_e),
       .result_src_e(result_src_e),
       .csr_write_e (csr_write_e),

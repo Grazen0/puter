@@ -7,7 +7,7 @@ module uart_controller #(
     input wire clk,
     input wire rst_n,
 
-    input wire [7:0] data_in,
+    input wire [7:0] write_data,
     input wire       start_write,
 
     output wire ready,
@@ -16,7 +16,7 @@ module uart_controller #(
     output reg  tx
 );
   localparam BIT_DELAY = CLK_FREQ / BAUD_RATE;
-  // localparam BIT_DELAY = 2;
+  // localparam BIT_DELAY = 1;
   localparam CTR_WIDTH = $clog2(BIT_DELAY + 1);
 
   localparam S_IDLE = 3'd0;
@@ -49,15 +49,15 @@ module uart_controller #(
     case (state)
       S_IDLE: begin
         if (start_write) begin
-          state_next = S_START;
-          data_next  = data_in;
+          state_next  = S_START;
+          data_next   = write_data;
+          parity_next = 0;
         end
       end
       S_START: begin
         state_next   = S_WRITE_DATA;
         state_delay  = BIT_DELAY;
 
-        parity_next  = 0;
         bit_ctr_next = 0;
       end
       S_WRITE_DATA: begin

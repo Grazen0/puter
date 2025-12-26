@@ -11,4 +11,11 @@
         }                                              \
     } while (false)
 
+#define PANIC_IF(cond, ...)     \
+    do {                        \
+        if (cond) {             \
+            PANIC(__VA_ARGS__); \
+        }                       \
+    } while (false)
+
 #endif

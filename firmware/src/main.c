@@ -2,6 +2,8 @@
 #include "numeric.h"
 #include "puter.h"
 #include "riscv.h"
+#include "rtc.h"
+#include "sd_card.h"
 #include "vga.h"
 #include <stddef.h>
 #include <stdio.h>
@@ -14,23 +16,6 @@ static constexpr char banner[] = "\
 |_|    \\__,_|\\__\\___|_|   \\___/|____/  \n\
 ";
 
-static constexpr size_t MTI_FREQ = 1000;
-static volatile u32 ticks = 0;
-
-void sleep_ms(const u32 ms)
-{
-    const u32 start = ticks;
-    const u32 end = start + ms;
-
-    if (end < start) {
-        while (ticks > start) {
-        }
-    }
-
-    while (ticks < end) {
-    }
-}
-
 void kmain(void)
 {
     printf("kernel!\n");
@@ -39,21 +24,11 @@ void kmain(void)
     }
 }
 
-void uart_write(const u8 byte)
-{
-    while (!UART->ready) {
-    }
-
-    UART->out = byte;
-}
-
 void main(void)
 {
     vga_init();
 
     printf("Initializing RTC...\n");
-    RTC->mtime = 0;
-    RTC->mtimecmp = RTC_FREQ / MTI_FREQ;
 
     printf("Initializing PLIC...\n");
     for (size_t i = 0; i < PLIC_PORTS; ++i) {
@@ -63,6 +38,12 @@ void main(void)
 
     printf("Initializing keyboard driver...\n");
     kb_init();
+
+    printf("Initializing SD card...\n");
+    const SdInitResult sd_result = sd_init();
+    if (sd_result != SD_INIT_OK)
+        printf("Could not initialize SD card: %s (code = %i)\n", sd_init_result_str(sd_result),
+               sd_result);
 
     printf("Enabling interrupts...\n");
     rv_mie_set(MIE_TIMER | MIE_EXTERNAL);
@@ -75,10 +56,11 @@ void main(void)
     printf("%s", banner);
     printf("\n");
     printf("Welcome to PuterOS.\n");
-    printf("\n");
 
     for (u8 i = 0; i < 16; ++i)
         TRAM[i].attr = i << 4;
+
+    sd_read_block(0);
 
     while (true) {
         kb_process_queue();
@@ -99,8 +81,7 @@ void main(void)
 
     switch (mcause) {
     case MCAUSE_M_TIMER_INT:
-        RTC->mtime = 0;
-        ++ticks;
+        rtc_process_interrupt();
         break;
 
     case MCAUSE_M_EXTERNAL_INT:
