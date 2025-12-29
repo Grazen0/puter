@@ -2,6 +2,7 @@
 #include "numeric.h"
 #include "puter.h"
 #include "riscv.h"
+#include "rtc.h"
 #include "vga.h"
 #include <stddef.h>
 #include <stdio.h>
@@ -13,23 +14,6 @@ static constexpr char banner[] = "\
 |  __/| |_| | ||  __/ |  | |_| |___) | \n\
 |_|    \\__,_|\\__\\___|_|   \\___/|____/  \n\
 ";
-
-static constexpr size_t MTI_FREQ = 1000;
-static volatile u32 ticks = 0;
-
-void sleep_ms(const u32 ms)
-{
-    const u32 start = ticks;
-    const u32 end = start + ms;
-
-    if (end < start) {
-        while (ticks > start) {
-        }
-    }
-
-    while (ticks < end) {
-    }
-}
 
 void kmain(void)
 {
@@ -52,8 +36,7 @@ void main(void)
     vga_init();
 
     printf("Initializing RTC...\n");
-    RTC->mtime = 0;
-    RTC->mtimecmp = RTC_FREQ / MTI_FREQ;
+    rtc_init();
 
     printf("Initializing PLIC...\n");
     for (size_t i = 0; i < PLIC_PORTS; ++i) {
@@ -99,8 +82,7 @@ void main(void)
 
     switch (mcause) {
     case MCAUSE_M_TIMER_INT:
-        RTC->mtime = 0;
-        ++ticks;
+        rtc_process_interrupt();
         break;
 
     case MCAUSE_M_EXTERNAL_INT:

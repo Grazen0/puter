@@ -20,6 +20,7 @@ FW_SRCS := $(FW_BASE)/src/keyboard.c \
 		   $(FW_BASE)/src/puter.c \
 		   $(FW_BASE)/src/riscv.c \
 		   $(FW_BASE)/src/riscv.s \
+		   $(FW_BASE)/src/rtc.c \
 		   $(FW_BASE)/src/startup.s \
 		   $(FW_BASE)/src/syscalls.c \
 		   $(FW_BASE)/src/vga.c
