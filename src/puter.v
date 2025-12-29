@@ -115,10 +115,12 @@ module puter (
 
   wire [31:0] ram_rdata;
 
-  word_ram ram (
+  word_ram #(
+      .SIZE_BYTES(4096)  // 4K
+  ) ram (
       .clk(sys_clk),
 
-      .addr_1   (data_addr[14:0]),
+      .addr_1   (data_addr[11:0]),
       .wdata_1  (data_wdata),
       .wenable_1(data_wenable & {4{data_sel == DATA_SEL_RAM}}),
       .rdata_1  (ram_rdata)

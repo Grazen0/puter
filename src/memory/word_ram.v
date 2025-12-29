@@ -1,8 +1,9 @@
 `default_nettype none `timescale 1ns / 1ps
 
 module word_ram #(
-    parameter SIZE_WORDS = 2 ** 13,
-    parameter ADDR_WIDTH = $clog2(4 * SIZE_WORDS)
+    parameter SIZE_BYTES = 0,
+    parameter SIZE_WORDS = SIZE_BYTES / 4,
+    parameter ADDR_WIDTH = $clog2(SIZE_BYTES)
 ) (
     input wire clk,
 

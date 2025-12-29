@@ -24,7 +24,9 @@ module cpu_tb ();
 
   wire [31:0] ram_rdata;
 
-  word_ram ram (
+  word_ram #(
+      .SIZE_BYTES(4096)  // 4K
+  ) ram (
       .clk(clk),
 
       .addr_1   (data_addr[14:0]),
