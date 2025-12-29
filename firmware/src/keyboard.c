@@ -1,7 +1,6 @@
 #include "keyboard.h"
 #include "control.h"
 #include "puter.h"
-#include "vga.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -108,7 +107,7 @@ typedef enum : u8 {
 
     SC_BREAK = 0xF0,
     SC_EXT = 0xE0,
-} KeyScanCode;
+} ScanCode;
 
 typedef enum {
     STATE_IDLE,
@@ -145,7 +144,6 @@ static const KeyCode scancode_to_keycode[256] = {
     [SC_P] = KEY_P,
     [SC_LEFT_BRACKET] = KEY_LBRACKET,
     [SC_RIGHT_BRACKET] = KEY_RBRACKET,
-    [SC_CAPS_LOCK] = KEY_CAPS_LOCK,
     [SC_A] = KEY_A,
     [SC_S] = KEY_S,
     [SC_D] = KEY_D,
@@ -169,11 +167,7 @@ static const KeyCode scancode_to_keycode[256] = {
     [SC_COMMA] = KEY_COMMA,
     [SC_PERIOD] = KEY_PERIOD,
     [SC_SLASH] = KEY_SLASH,
-    [SC_RIGHT_SHIFT] = KEY_RSHIFT,
-    [SC_LEFT_CTRL] = KEY_LCTRL,
-    [SC_LEFT_ALT] = KEY_LALT,
     [SC_SPACE] = KEY_SPACE,
-    [SC_NUM_LOCK] = KEY_NUM_LOCK,
     [SC_KEYPAD_7] = KEY_KEYPAD_7,
     [SC_KEYPAD_4] = KEY_KEYPAD_4,
     [SC_KEYPAD_1] = KEY_KEYPAD_1,
@@ -206,8 +200,6 @@ static const KeyCode scancode_to_keycode[256] = {
 };
 
 static const KeyCode scancode_ext_to_keycode[256] = {
-    [SC_EXT_RIGHT_ALT] = KEY_RALT,
-    [SC_EXT_RIGHT_CTRL] = KEY_RCTRL,
     [SC_EXT_INSERT] = KEY_INSERT,
     [SC_EXT_DELETE] = KEY_DELETE,
     [SC_EXT_LEFT_ARROW] = KEY_LEFT_ARROW,
