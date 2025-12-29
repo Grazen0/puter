@@ -23,14 +23,6 @@ void kmain(void)
     }
 }
 
-void uart_write(const u8 byte)
-{
-    while (!UART->ready) {
-    }
-
-    UART->out = byte;
-}
-
 void main(void)
 {
     vga_init();

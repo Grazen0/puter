@@ -72,6 +72,17 @@ module top_tb ();
     end
   endtask
 
+  task send_spi_byte(input reg [7:0] data);
+    integer i;
+
+    begin
+      for (i = 0; i < 8; i = i + 1) begin
+        sd_miso = data[i];
+        @(negedge sd_sclk);
+      end
+    end
+  endtask
+
   initial begin
     $dumpvars(0, top_tb);
 
@@ -83,20 +94,7 @@ module top_tb ();
 
     $display("");
 
-    @(posedge sd_sclk);
     sd_miso = 1;
-
-    repeat (4) begin
-      @(negedge sd_sclk);
-    end
-
-    sd_miso = 0;
-
-    #500_000 $finish();
-
-    send_scancode(8'h1C);
-    #50_000 send_scancode(8'hE0);
-    #50_000 send_scancode(8'h75);
 
     #1_000_000;
     $display("");
