@@ -125,11 +125,11 @@ typedef struct {
     KeyMod mod;
 } Key;
 
-void kb_init(void);
+void kb_init();
 
-void kb_process_interrupt(void);
+void kb_process_interrupt();
 
-void kb_process_queue(void);
+void kb_process_queue();
 
 bool kb_poll_key(Key *out);
 

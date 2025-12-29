@@ -249,12 +249,12 @@ typedef struct {
 
 static KeyboardContext ctx;
 
-static inline bool kb_scancode_available(void)
+static inline bool kb_scancode_available()
 {
     return ctx.sc_head != ctx.sc_tail;
 }
 
-static u8 kb_scancode_take(void)
+static u8 kb_scancode_take()
 {
     const u8 scancode = ctx.scancodes[ctx.sc_head];
 
@@ -272,7 +272,7 @@ static inline void kb_scancode_push(const u8 scancode)
         ctx.sc_tail = 0;
 }
 
-static KeyMod make_keymod(void)
+static KeyMod make_keymod()
 {
     KeyMod mod = KMOD_NONE;
 
@@ -355,7 +355,7 @@ static inline void kb_process_scancode(const u8 scancode)
     }
 }
 
-void kb_init(void)
+void kb_init()
 {
     ctx = (KeyboardContext){
         .sc_head = 0,
@@ -377,12 +377,12 @@ void kb_init(void)
     };
 }
 
-void kb_process_interrupt(void)
+void kb_process_interrupt()
 {
     kb_scancode_push(KEYBOARD->scancode);
 }
 
-void kb_process_queue(void)
+void kb_process_queue()
 {
     while (kb_scancode_available())
         kb_process_scancode(kb_scancode_take());

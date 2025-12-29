@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-void vga_init(void);
+void vga_init();
 
-void vga_clear(void);
+void vga_clear();
 
 void vga_print_char(char ch);
 

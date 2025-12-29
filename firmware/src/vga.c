@@ -50,7 +50,7 @@ typedef struct {
 
 static VgaContext ctx;
 
-static inline void scroll(void)
+static inline void scroll()
 {
     for (size_t i = 0; i < SCREEN_ROWS - 1; ++i) {
         for (size_t j = 0; j < SCREEN_COLS; ++j)
@@ -61,7 +61,7 @@ static inline void scroll(void)
         TRAM[((SCREEN_ROWS - 1) * SCREEN_COLS) + j].value = VVALUE_EMPTY;
 }
 
-void vga_init(void)
+void vga_init()
 {
     ctx = (VgaContext){
         .tram_idx = 0,
@@ -71,7 +71,7 @@ void vga_init(void)
     vga_clear();
 }
 
-void vga_clear(void)
+void vga_clear()
 {
     ctx.tram_idx = 0;
 

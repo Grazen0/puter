@@ -29,22 +29,22 @@ typedef enum : u32 {
     MCAUSE_M_EXTERNAL_INT = MCAUSE_INTERRUPT | 11,
 } MCause;
 
-char *rv_sp_read(void);
+char *rv_sp_read();
 
-u32 rv_mstatus_read(void);
+u32 rv_mstatus_read();
 
-u64 rv_mcycle_read(void);
+u64 rv_mcycle_read();
 
-u32 rv_mcause_read(void);
+u32 rv_mcause_read();
 
-uintptr_t rv_mepc_read(void);
+uintptr_t rv_mepc_read();
 
-void rv_mepc_inc(void);
+void rv_mepc_inc();
 
 void rv_mstatus_set(u32 n);
 
 void rv_mie_set(u32 n);
 
-[[noreturn]] void rv_jump_umode(void (*fn)(void));
+[[noreturn]] void rv_jump_umode(void (*fn)());
 
 #endif

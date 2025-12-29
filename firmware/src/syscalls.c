@@ -8,7 +8,7 @@
 #undef errno
 extern int errno;
 
-void _exit(void)
+void _exit()
 {
     while (true) {
     }
@@ -29,7 +29,7 @@ int _execve([[maybe_unused]] char *const name, [[maybe_unused]] char **const arg
     return -1;
 }
 
-int _fork(void)
+int _fork()
 {
     errno = EAGAIN;
     return -1;
@@ -41,7 +41,7 @@ int _fstat([[maybe_unused]] const int file, [[maybe_unused]] struct stat *const 
     return 0;
 }
 
-int _getpid(void)
+int _getpid()
 {
     return 1;
 }
