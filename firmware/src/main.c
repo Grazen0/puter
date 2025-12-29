@@ -15,7 +15,7 @@ static constexpr char banner[] = "\
 |_|    \\__,_|\\__\\___|_|   \\___/|____/  \n\
 ";
 
-void kmain(void)
+void kmain()
 {
     printf("kernel!\n");
     __asm__ volatile("csrr t0, mepc");
@@ -23,7 +23,7 @@ void kmain(void)
     }
 }
 
-void main(void)
+void main()
 {
     vga_init();
 
@@ -66,7 +66,7 @@ void main(void)
     }
 }
 
-[[gnu::interrupt]] void trap_handler(void)
+[[gnu::interrupt]] void trap_handler()
 {
     // TODO: set up reentrancy
 
