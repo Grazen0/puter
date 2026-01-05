@@ -2,9 +2,13 @@
 #define FIRMWARE_SPI_H
 
 #include "numeric.h"
+#include "puter.h"
 #include <stddef.h>
 
-void spi_set_freq(size_t freq);
+static inline void spi_set_freq(const size_t freq)
+{
+    SPI->sclk_half_period = SYS_CLK_FREQ / (2 * freq);
+}
 
 void spi_write(u8 byte);
 

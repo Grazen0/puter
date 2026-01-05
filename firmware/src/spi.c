@@ -9,11 +9,6 @@ static inline void spi_wait_ready()
     }
 }
 
-void spi_set_freq(const size_t freq)
-{
-    SPI->sclk_half_period = SYS_CLK_FREQ / (2 * freq);
-}
-
 void spi_write(const u8 byte)
 {
     spi_wait_ready();
