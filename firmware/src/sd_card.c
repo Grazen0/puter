@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-static constexpr size_t BLOCK_SIZE = 512;
+constexpr size_t BLOCK_SIZE = 512;
 
 typedef enum : u8 {
     SD_GO_IDLE = 0,
@@ -21,7 +21,7 @@ typedef enum : u8 {
     SD_APP_INIT = 41,
 } SdCmd;
 
-static constexpr size_t CRC_TABLE_SIZE = 256;
+constexpr size_t CRC_TABLE_SIZE = 256;
 u8 crc_table[CRC_TABLE_SIZE];
 
 static inline u8 crc_add(const u8 crc, const u8 message_byte)
@@ -40,11 +40,11 @@ u8 get_crc(const u8 message[], const size_t length)
     return crc;
 }
 
-static constexpr size_t SPI_INIT_FREQ = 100'000;
-static constexpr size_t SPI_FREQ = 10'000'000;
+constexpr size_t SPI_INIT_FREQ = 100'000;
+constexpr size_t SPI_FREQ = 10'000'000;
 
-static constexpr size_t RES_TIMEOUT_BYTES = SPI_INIT_FREQ / 8;
-static constexpr u8 R1_NONE = 0xFF;
+constexpr size_t RES_TIMEOUT_BYTES = SPI_INIT_FREQ / 8;
+constexpr u8 R1_NONE = 0xFF;
 
 static u8 sd_read_r1()
 {
@@ -70,7 +70,7 @@ static u32 sd_read_r3()
     return ocr;
 }
 
-static constexpr u8 CMD_START_BITS = 0x40;
+constexpr u8 CMD_START_BITS = 0x40;
 
 static u8 sd_send_cmd_r1(const SdCmd cmd, const u32 arg, const u8 crc)
 {
@@ -122,31 +122,31 @@ static R3Response sd_send_cmd_r3(const SdCmd cmd, const u32 arg, const u8 crc)
 
 SdInitResult sd_init()
 {
-    static constexpr size_t GO_IDLE_RETRIES = 10;
+    constexpr size_t GO_IDLE_RETRIES = 10;
 
-    static constexpr u32 GO_IDLE_ARG = 0x00000000;
-    static constexpr u32 GO_IDLE_CRC = 0x95;
+    constexpr u32 GO_IDLE_ARG = 0x00000000;
+    constexpr u32 GO_IDLE_CRC = 0x95;
 
-    static constexpr u32 CHECK_V_ARG = 0x000001AA;
-    static constexpr u32 CHECK_V_CRC = 0x86;
+    constexpr u32 CHECK_V_ARG = 0x000001AA;
+    constexpr u32 CHECK_V_CRC = 0x86;
 
-    static constexpr u32 READ_OCR_ARG = 0x00000000;
-    static constexpr u32 READ_OCR_CRC = 0x00;
+    constexpr u32 READ_OCR_ARG = 0x00000000;
+    constexpr u32 READ_OCR_CRC = 0x00;
 
-    static constexpr u32 ACMD_LEADING_ARG = 0x00000000;
-    static constexpr u32 ACMD_LEADING_CRC = 0x00;
+    constexpr u32 ACMD_LEADING_ARG = 0x00000000;
+    constexpr u32 ACMD_LEADING_CRC = 0x00;
 
-    static constexpr u32 APP_INIT_ARG_V1 = 0x00000000;
-    static constexpr u32 APP_INIT_CRC_V1 = 0x00;
+    constexpr u32 APP_INIT_ARG_V1 = 0x00000000;
+    constexpr u32 APP_INIT_CRC_V1 = 0x00;
 
-    static constexpr u32 APP_INIT_ARG_V2 = 0x40000000;
-    static constexpr u32 APP_INIT_CRC_V2 = 0x00;
+    constexpr u32 APP_INIT_ARG_V2 = 0x40000000;
+    constexpr u32 APP_INIT_CRC_V2 = 0x00;
 
-    static constexpr u32 INIT_ARG = 0x00000000;
-    static constexpr u32 INIT_CRC = 0x00;
+    constexpr u32 INIT_ARG = 0x00000000;
+    constexpr u32 INIT_CRC = 0x00;
 
-    static constexpr u32 SET_BLOCKLEN_ARG = 0x00000200;
-    static constexpr u32 SET_BLOCKLEN_CRC = 0x00;
+    constexpr u32 SET_BLOCKLEN_ARG = 0x00000200;
+    constexpr u32 SET_BLOCKLEN_CRC = 0x00;
 
     spi_set_freq(SPI_INIT_FREQ);
 
@@ -222,10 +222,8 @@ app_init_v1:
         goto init_mmc;
     else if (appinit_v1_res == 0x00)
         goto set_blocklen; // SD v1
-    else {
-        // printf("app init v1: %02X\n", appinit_v1_res);
+    else
         goto app_init_v1;
-    }
 
     // TODO: add timeout
 init_mmc:
@@ -253,11 +251,11 @@ inc_sclk_speed:
 
 void sd_read_block(const u32 block_addr)
 {
-    static constexpr u32 READ_SINGLE_BLOCK_CRC = 0x00;
+    constexpr u32 READ_SINGLE_BLOCK_CRC = 0x00;
 
-    static constexpr u8 START_TOKEN = 0xFE;
+    constexpr u8 START_TOKEN = 0xFE;
 
-    static constexpr size_t MAX_READ_ATTEMPTS = 3000;
+    constexpr size_t MAX_READ_ATTEMPTS = 3000;
 
     spi_write(0xFF);
     spi_cs_enable();

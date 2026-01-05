@@ -2,7 +2,7 @@
 #include "numeric.h"
 #include "puter.h"
 
-static constexpr size_t MTI_FREQ = 1000;
+constexpr size_t MTI_FREQ = 1000;
 
 static u32 ticks;
 

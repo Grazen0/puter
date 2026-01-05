@@ -40,8 +40,8 @@ typedef enum : u8 {
     ATTR_BG_WHITE = 0xF0,
 } TextAttr;
 
-static constexpr size_t TAB_WIDTH = 4;
-static constexpr u16 VVALUE_EMPTY = (ATTR_FG_WHITE | ATTR_BG_BLACK) << 8;
+constexpr size_t TAB_WIDTH = 4;
+constexpr u16 VVALUE_EMPTY = (ATTR_FG_WHITE | ATTR_BG_BLACK) << 8;
 
 typedef struct {
     size_t tram_idx;

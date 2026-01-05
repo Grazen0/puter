@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-static constexpr char banner[] = "\
+static const char banner[] = "\
  ____        _             ___  ____   \n\
 |  _ \\ _   _| |_ ___ _ __ / _ \\/ ___|  \n\
 | |_) | | | | __/ _ \\ '__| | | \\___ \\  \n\

@@ -214,8 +214,8 @@ static const KeyCode scancode_ext_to_keycode[256] = {
     [SC_EXT_KEYPAD_ENTER] = KEY_KEYPAD_ENTER,
 };
 
-static constexpr size_t SCANCODES_CAPACITY = 32;
-static constexpr size_t KEYBUF_CAPACITY = 64;
+constexpr size_t SCANCODES_CAPACITY = 32;
+constexpr size_t KEYBUF_CAPACITY = 64;
 
 typedef struct {
     u8 scancodes[SCANCODES_CAPACITY];
