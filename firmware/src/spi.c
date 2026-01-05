@@ -23,6 +23,7 @@ void spi_cs_disable()
 
 void spi_set_freq(const size_t freq)
 {
+    spi_wait_ready();
     SPI->sclk_half_period = SYS_CLK_FREQ / (2 * freq);
 }
 
