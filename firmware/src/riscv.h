@@ -45,6 +45,6 @@ void rv_mstatus_set(u32 n);
 
 void rv_mie_set(u32 n);
 
-[[noreturn]] void rv_jump_umode(void (*fn)());
+[[noreturn]] void rv_jump_umode(void fn());
 
 #endif
