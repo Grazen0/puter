@@ -1,5 +1,6 @@
 {
   pkgs ? import <nixpkgs> { },
+  unstablePkgs,
   riscvPkgs,
 }:
 pkgs.mkShell {
@@ -9,6 +10,7 @@ pkgs.mkShell {
   ];
 
   packages = with pkgs; [
+    unstablePkgs.gcc
     bear
     glibc_multi
     gtkwave

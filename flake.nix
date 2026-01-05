@@ -1,6 +1,7 @@
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=2fb006b87f04c4d3bdf08cfdbc7fab9c13d94a15";
+    nixpkgs-unstable.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     systems.url = "github:nix-systems/default";
   };
@@ -9,6 +10,7 @@
     inputs@{
       self,
       nixpkgs,
+      nixpkgs-unstable,
       flake-parts,
       ...
     }:
@@ -23,6 +25,8 @@
           ...
         }:
         let
+          unstablePkgs = import nixpkgs-unstable { inherit system; };
+
           riscvPkgs = import nixpkgs {
             inherit system;
             crossSystem = {
@@ -33,7 +37,7 @@
           };
         in
         {
-          devShells.default = pkgs.callPackage ./shell.nix { inherit riscvPkgs; };
+          devShells.default = pkgs.callPackage ./shell.nix { inherit unstablePkgs riscvPkgs; };
         };
     };
 }
