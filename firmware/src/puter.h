@@ -41,8 +41,7 @@ typedef union {
     struct {
         volatile u8 cs;
         volatile u8 sclk_half_period;
-        volatile u8 out;
-        volatile u8 start_read;
+        volatile u8 transfer;
     };
 } Spi;
 

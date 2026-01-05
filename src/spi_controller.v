@@ -10,8 +10,7 @@ module spi_controller #(
 
     // 00: set ss
     // 01: set clock half period
-    // 10: write byte
-    // 11: read byte
+    // 1x: transfer byte
     input wire [1:0] cmd,
     input wire [7:0] data,
     input wire start,
@@ -27,18 +26,15 @@ module spi_controller #(
 );
   localparam CMD_SET_SS = 2'b00;
   localparam CMD_SET_HALF_PERIOD = 2'b01;
-  localparam CMD_WRITE = 2'b10;
-  localparam CMD_READ = 2'b11;
+  localparam CMD_TRANSFER = 2'b1z;
 
   localparam S_IDLE = 2'd0;
-  localparam S_WRITE = 2'd1;
-  localparam S_WAIT_FOR_RESPONSE = 2'd2;
-  localparam S_READ = 2'd3;
+  localparam S_CLK_DOWN = 2'd1;
+  localparam S_CLK_UP = 2'd2;
 
   reg sclk_next;
   reg ss_next;
   reg mosi_next;
-  reg [7:0] rdata_next;
   reg rdata_valid_next;
 
   reg [1:0] state, state_next;
@@ -50,9 +46,6 @@ module spi_controller #(
 
   reg [7:0] half_period, half_period_next;
 
-  wire sclk_posedge = ~sclk & sclk_next;
-  wire sclk_negedge = sclk & ~sclk_next;
-
   always @(*) begin
     sclk_next        = sclk;
     ss_next          = ss;
@@ -62,7 +55,6 @@ module spi_controller #(
     data_buf_next    = data_buf;
     bit_ctr_next     = bit_ctr;
     half_period_next = half_period;
-    rdata_next       = rdata;
     rdata_valid_next = rdata_valid;
 
     case (state)
@@ -70,18 +62,14 @@ module spi_controller #(
         sclk_next = 0;
 
         if (start) begin
-          case (cmd)
+          casez (cmd)
             CMD_SET_SS:          ss_next = data[0];
             CMD_SET_HALF_PERIOD: half_period_next = data;
-            CMD_WRITE: begin
-              state_next    = S_WRITE;
+            CMD_TRANSFER: begin
+              state_next    = S_CLK_DOWN;
               data_buf_next = data;
               bit_ctr_next  = 0;
               mosi_next = data_buf_next[7];
-            end
-            CMD_READ: begin
-              state_next       = S_READ;
-              bit_ctr_next     = 0;
               rdata_valid_next = 0;
             end
             default: begin
@@ -89,49 +77,48 @@ module spi_controller #(
           endcase
         end
       end
-      S_WRITE: begin
+      S_CLK_DOWN: begin
         ctr_next = ctr + 1;
 
         if (ctr_next >= half_period) begin
-          sclk_next = ~sclk;
-          ctr_next  = 0;
-        end
-
-        if (sclk_negedge) begin
-          bit_ctr_next = bit_ctr - 1;
-          state_next = bit_ctr_next == 0 ? S_IDLE : S_WRITE;
-          data_buf_next = {data_buf[6:0], 1'b1};
-          mosi_next = data_buf_next[7];
+          data_buf_next = {data_buf[6:0], miso};
+          state_next    = S_CLK_UP;
+          ctr_next      = 0;
         end
       end
-      S_READ: begin
+      S_CLK_UP: begin
         ctr_next = ctr + 1;
 
         if (ctr_next >= half_period) begin
-          sclk_next = ~sclk;
-          ctr_next  = 0;
-        end
+          bit_ctr_next = bit_ctr - 1;
+          ctr_next     = 0;
 
-        if (sclk_posedge) begin
-          bit_ctr_next  = bit_ctr - 1;
-          data_buf_next = {data_buf[6:0], miso};
-        end else if (sclk_negedge && bit_ctr_next == 0) begin
-          state_next = S_IDLE;
-          rdata_next = data_buf;
-          rdata_valid_next = 1;
+          if (bit_ctr_next == 0) begin
+            state_next       = S_IDLE;
+            rdata_valid_next = 0;
+          end else begin
+            state_next = S_CLK_DOWN;
+          end
         end
       end
       default: state_next = S_IDLE;
     endcase
+
+    if (state_next == S_CLK_DOWN) begin
+      sclk_next = 0;
+      mosi_next = data_buf_next[7];
+    end else if (state_next == S_CLK_UP) begin
+      sclk_next = 1;
+    end
   end
 
   always @(posedge clk) begin
     if (!rst_n) begin
-      sclk  <= 0;
-      ss    <= 1;
-      mosi  <= 1;
-      state <= S_IDLE;
-      ctr   <= 0;
+      sclk        <= 0;
+      ss          <= 1;
+      mosi        <= 1;
+      state       <= S_IDLE;
+      ctr         <= 0;
       rdata_valid <= 0;
     end else begin
       sclk        <= sclk_next;
@@ -142,7 +129,6 @@ module spi_controller #(
       data_buf    <= data_buf_next;
       bit_ctr     <= bit_ctr_next;
       half_period <= half_period_next;
-      rdata       <= rdata_next;
       rdata_valid <= rdata_valid_next;
     end
   end
