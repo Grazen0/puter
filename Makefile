@@ -36,7 +36,7 @@ FW_INC_FLAGS := $(addprefix -I,$(FW_INC_DIRS))
 
 override CFLAGS += $(FW_INC_FLAGS) -march=rv32i_zicsr -mabi=ilp32 \
 		  -std=c23 -specs=nano.specs -nostartfiles -ffreestanding \
-		  -g -Oz -ffunction-sections -fdata-sections \
+		  -g -Oz -ffunction-sections -fdata-sections -fomit-frame-pointer \
 		  -Wall -Wextra -Wpedantic
 
 LDFLAGS := --no-warn-rwx-segments,--gc-sections
@@ -88,7 +88,7 @@ $(BUILD_DIR)/$(FW_BASE)/$(FW_TARGET_BIN): $(BUILD_DIR)/$(FW_BASE)/$(FW_TARGET_EX
 	$(OBJCOPY) -O binary $< $@
 
 $(BUILD_DIR)/$(FW_BASE)/$(FW_TARGET_EXEC): $(FW_OBJS) $(FW_LINKER)
-	$(CC) $(CFLAGS) -T $(FW_LINKER) -o $@ $(FW_OBJS)
+	$(CC) $(CFLAGS) -L$(LDFLAGS) -T $(FW_LINKER) -o $@ $(FW_OBJS)
 
 $(BUILD_DIR)/%.c.o: %.c
 	mkdir -p $(dir $@)
