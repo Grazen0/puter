@@ -8,7 +8,7 @@ A RISC-V-based system with a super simple OS (in the making) named _PuterOS_.
 - [x] Screen cursor.
 - [ ] Non-volatile storage via SD card.
 - [x] Branch predictor.
-- [ ] On-the-fly software updates via USB.
+- [/] On-the-fly software updates via USB. (To be replaced by SD card).
 - [ ] Programmable text font.
 - [ ] Programmable text palette.
 - [ ] Virtual memory / memory protection.
