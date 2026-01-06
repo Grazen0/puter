@@ -1,34 +1,34 @@
 .text
 
-.global rv_sp_read
-rv_sp_read:
+.global rv_read_sp
+rv_read_sp:
     mv      a0, sp
     ret
 
-.global rv_mstatus_read
-rv_mstatus_read:
+.global rv_read_mstatus
+rv_read_mstatus:
     csrr    a0, mstatus
     ret
 
-.global rv_mcycle_read
-rv_mcycle_read:
+.global rv_read_mcycle
+rv_read_mcycle:
     csrr    a0, mcycle
     csrr    a1, mcycleh
     ret
 
-.global rv_minstret_read
-rv_minstret_read:
+.global rv_read_minstret
+rv_read_minstret:
     csrr    a0, minstret
     csrr    a1, minstreth
     ret
 
-.global rv_mcause_read
-rv_mcause_read:
+.global rv_read_mcause
+rv_read_mcause:
     csrr    a0, mcause
     ret
 
-.global rv_mepc_read
-rv_mepc_read:
+.global rv_read_mepc
+rv_read_mepc:
     csrr    a0, mepc
     ret
 
