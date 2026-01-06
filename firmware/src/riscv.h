@@ -35,6 +35,8 @@ u32 rv_mstatus_read();
 
 u64 rv_mcycle_read();
 
+u64 rv_minstret_read();
+
 u32 rv_mcause_read();
 
 uintptr_t rv_mepc_read();
