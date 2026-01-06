@@ -5,28 +5,28 @@
 #include <stdint.h>
 
 typedef enum {
-    MIE_SOFTWARE = 0x008,
-    MIE_TIMER = 0x080,
-    MIE_EXTERNAL = 0x800,
-} MieField;
+    MieBit_Software = 0x008,
+    MieBit_Timer = 0x080,
+    MieBit_External = 0x800,
+} MieBit;
 
 typedef enum {
-    MSTATUS_MIE = 0x8,
+    MStatus_Mie = 0x8,
 } MStatusField;
 
 typedef enum : u32 {
-    MCAUSE_INTERRUPT = 0x8000'0000,
-    MCAUSE_EXCEPTION = 0x0000'0000,
+    MCause_Interrupt = 0x8000'0000,
+    MCause_Exception = 0x0000'0000,
 } MCauseType;
 
 typedef enum : u32 {
-    MCAUSE_ILLEGAL_INSTR = MCAUSE_EXCEPTION | 2,
-    MCAUSE_BREAKPOINT = MCAUSE_EXCEPTION | 3,
-    MCAUSE_U_ECALL = MCAUSE_EXCEPTION | 8,
-    MCAUSE_M_ECALL = MCAUSE_EXCEPTION | 11,
-    MCAUSE_M_SOFTWARE_INT = MCAUSE_INTERRUPT | 3,
-    MCAUSE_M_TIMER_INT = MCAUSE_INTERRUPT | 7,
-    MCAUSE_M_EXTERNAL_INT = MCAUSE_INTERRUPT | 11,
+    MCause_IllegalInstr = MCause_Exception | 2,
+    MCause_Breakpoint = MCause_Exception | 3,
+    MCause_UEcall = MCause_Exception | 8,
+    MCause_MEcall = MCause_Exception | 11,
+    MCause_MSoftwareInt = MCause_Interrupt | 3,
+    MCause_MTimerInt = MCause_Interrupt | 7,
+    MCause_MExternalInt = MCause_Interrupt | 11,
 } MCause;
 
 char *rv_read_sp();
@@ -41,11 +41,11 @@ u32 rv_read_mcause();
 
 uintptr_t rv_read_mepc();
 
-void rv_mepc_inc();
+void rv_inc_mepc();
 
-void rv_mstatus_set(u32 n);
+void rv_set_mstatus(u32 n);
 
-void rv_mie_set(u32 n);
+void rv_set_mie(u32 n);
 
 [[noreturn]] void rv_jump_umode(void fn());
 

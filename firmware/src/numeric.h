@@ -13,4 +13,9 @@ typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
 
+[[nodiscard]] static inline u16 concat_u16(const u8 hi, const u8 lo)
+{
+    return ((u16)hi << 8) | (u16)lo;
+}
+
 #endif

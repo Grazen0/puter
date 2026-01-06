@@ -7,10 +7,10 @@ void vga_init();
 
 void vga_clear();
 
-void vga_print_char(char ch);
+void vga_putchar(char ch);
 
-void vga_print(const char *s);
+void vga_print(const char s[static 1]);
 
-void vga_sprint(const char *s, size_t n);
+void vga_sprint(size_t n, const char s[static n + 1]);
 
 #endif

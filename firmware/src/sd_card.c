@@ -5,43 +5,22 @@
 #include <stddef.h>
 #include <stdio.h>
 
-constexpr size_t BLOCK_SIZE = 512;
-
 typedef enum : u8 {
-    SD_GO_IDLE = 0,
-    SD_INIT = 1,
-    SD_CHECK_V = 8,
-    SD_STOP_READ = 12,
-    SD_SET_BLOCKLEN = 16,
-    SD_READ_SINGLE_BLOCK = 17,
-    SD_READ_MULTI_BLOCK = 18,
-    SD_WRITE_MULTI_BLOCK = 25,
-    SD_ACMD_LEADING = 55,
-    SD_READ_OCR = 58,
-    SD_APP_INIT = 41,
+    SdCmd_GoIdle = 0,
+    SdCmd_Init = 1,
+    SdCmd_CheckV = 8,
+    SdCmd_StopRead = 12,
+    SdCmd_SetBlockLen = 16,
+    SdCmd_ReadSingleBlock = 17,
+    SdCMd_ReadMultiBlock = 18,
+    SdCmd_WriteMultiBlock = 25,
+    SdCmd_AcmdLeading = 55,
+    SdCmd_ReadOcr = 58,
+    SdCmd_AppInit = 41,
 } SdCmd;
 
-constexpr size_t CRC_TABLE_SIZE = 256;
-u8 crc_table[CRC_TABLE_SIZE];
-
-static inline u8 crc_add(const u8 crc, const u8 message_byte)
-{
-    return crc_table[(crc << 1) ^ message_byte];
-}
-
-// returns the CRC-7 for a message of "length" bytes
-u8 get_crc(const u8 message[], const size_t length)
-{
-    u8 crc = 0;
-
-    for (size_t i = 0; i < length; ++i)
-        crc = crc_add(crc, message[i]);
-
-    return crc;
-}
-
-constexpr size_t SPI_INIT_FREQ = 100'000;
-constexpr size_t SPI_FREQ = 10'000'000;
+constexpr size_t SPI_INIT_FREQ = 100'000U;
+constexpr size_t SPI_FREQ = 10'000'000U;
 
 constexpr size_t RES_TIMEOUT_BYTES = SPI_INIT_FREQ / 8;
 constexpr u8 R1_NONE = 0xFF;
@@ -92,12 +71,17 @@ typedef struct {
     u32 r3;
 } R3Response;
 
-typedef enum {
-    ADDRMODE_BYTE,
-    ADDRMODE_BLOCK,
+typedef enum : u8 {
+    AddressMode_Byte,
+    AddressMode_Block,
 } AddressMode;
 
-static AddressMode address_mode;
+typedef struct {
+    AddressMode address_mode;
+    bool ready;
+} SdCardContext;
+
+static SdCardContext ctx;
 
 static R3Response sd_send_cmd_r3(const SdCmd cmd, const u32 arg, const u8 crc)
 {
@@ -125,28 +109,33 @@ SdInitResult sd_init()
     constexpr size_t GO_IDLE_RETRIES = 10;
 
     constexpr u32 GO_IDLE_ARG = 0x00000000;
-    constexpr u32 GO_IDLE_CRC = 0x95;
+    constexpr u8 GO_IDLE_CRC = 0x95;
 
     constexpr u32 CHECK_V_ARG = 0x000001AA;
-    constexpr u32 CHECK_V_CRC = 0x86;
+    constexpr u8 CHECK_V_CRC = 0x86;
 
     constexpr u32 READ_OCR_ARG = 0x00000000;
-    constexpr u32 READ_OCR_CRC = 0x00;
+    constexpr u8 READ_OCR_CRC = 0x00;
 
     constexpr u32 ACMD_LEADING_ARG = 0x00000000;
-    constexpr u32 ACMD_LEADING_CRC = 0x00;
+    constexpr u8 ACMD_LEADING_CRC = 0x00;
 
     constexpr u32 APP_INIT_ARG_V1 = 0x00000000;
-    constexpr u32 APP_INIT_CRC_V1 = 0x00;
+    constexpr u8 APP_INIT_CRC_V1 = 0x00;
 
     constexpr u32 APP_INIT_ARG_V2 = 0x40000000;
-    constexpr u32 APP_INIT_CRC_V2 = 0x00;
+    constexpr u8 APP_INIT_CRC_V2 = 0x00;
 
     constexpr u32 INIT_ARG = 0x00000000;
-    constexpr u32 INIT_CRC = 0x00;
+    constexpr u8 INIT_CRC = 0x00;
 
     constexpr u32 SET_BLOCKLEN_ARG = 0x00000200;
-    constexpr u32 SET_BLOCKLEN_CRC = 0x00;
+    constexpr u8 SET_BLOCKLEN_CRC = 0x00;
+
+    ctx = (SdCardContext){
+        .address_mode = AddressMode_Byte, // Most SD card types use byte addressing
+        .ready = false,
+    };
 
     spi_set_freq(SPI_INIT_FREQ);
 
@@ -157,32 +146,32 @@ SdInitResult sd_init()
     u8 goidle_res = R1_NONE;
 
     for (size_t i = 0; i < GO_IDLE_RETRIES; ++i) {
-        goidle_res = sd_send_cmd_r1(SD_GO_IDLE, GO_IDLE_ARG, GO_IDLE_CRC);
+        goidle_res = sd_send_cmd_r1(SdCmd_GoIdle, GO_IDLE_ARG, GO_IDLE_CRC);
 
         if (goidle_res == 0x01)
             break;
     }
 
     if (goidle_res != 0x01)
-        return SD_INIT_ERR_NOIDLE;
+        return SdInitResult_ErrNoIdle;
     else
         goto check_voltage;
 
 check_voltage:
-    const u8 checkv_res = sd_send_cmd_r1(SD_CHECK_V, CHECK_V_ARG, CHECK_V_CRC);
+    const u8 checkv_res = sd_send_cmd_r1(SdCmd_CheckV, CHECK_V_ARG, CHECK_V_CRC);
 
     if (checkv_res == 0x01)
         goto app_init_v2;
-    else {
+    else
         goto app_init_v1;
-    }
 
     // TODO: add timeout
 app_init_v2:
-    const u8 acmdlead_res_v2 = sd_send_cmd_r1(SD_ACMD_LEADING, ACMD_LEADING_ARG, ACMD_LEADING_CRC);
+    const u8 acmdlead_res_v2 =
+        sd_send_cmd_r1(SdCmd_AcmdLeading, ACMD_LEADING_ARG, ACMD_LEADING_CRC);
     PANIC_IF(acmdlead_res_v2 == R1_NONE);
 
-    const u8 appinit_v2_res = sd_send_cmd_r1(SD_APP_INIT, APP_INIT_ARG_V2, APP_INIT_CRC_V2);
+    const u8 appinit_v2_res = sd_send_cmd_r1(SdCmd_AppInit, APP_INIT_ARG_V2, APP_INIT_CRC_V2);
 
     if (appinit_v2_res == 0x00)
         goto read_ocr;
@@ -190,14 +179,12 @@ app_init_v2:
         goto app_init_v2;
 
 read_ocr:
-    const R3Response readocr_res = sd_send_cmd_r3(SD_READ_OCR, READ_OCR_ARG, READ_OCR_CRC);
+    const R3Response readocr_res = sd_send_cmd_r3(SdCmd_ReadOcr, READ_OCR_ARG, READ_OCR_CRC);
 
     if (readocr_res.r1 == 0x00)
         goto receive_ocr;
-    else {
-        address_mode = ADDRMODE_BYTE;
+    else
         goto set_blocklen; // SD v2 (byte address)
-    }
 
 receive_ocr:
     printf("Card OCR: %08X\n", readocr_res.r3);
@@ -205,7 +192,7 @@ receive_ocr:
 
 high_capacity:
     if ((readocr_res.r3 & 0x4000'0000) != 0) {
-        address_mode = ADDRMODE_BLOCK;
+        ctx.address_mode = AddressMode_Block;
         goto inc_sclk_speed; // SD v2 (block address)
     } else {
         goto set_blocklen; // SD v2 (byte address)
@@ -213,10 +200,11 @@ high_capacity:
 
     // TODO: add timeout
 app_init_v1:
-    const u8 acmdlead_res_v1 = sd_send_cmd_r1(SD_ACMD_LEADING, ACMD_LEADING_ARG, ACMD_LEADING_CRC);
+    const u8 acmdlead_res_v1 =
+        sd_send_cmd_r1(SdCmd_AcmdLeading, ACMD_LEADING_ARG, ACMD_LEADING_CRC);
     PANIC_IF(acmdlead_res_v1 == R1_NONE);
 
-    const u8 appinit_v1_res = sd_send_cmd_r1(SD_APP_INIT, APP_INIT_ARG_V1, APP_INIT_CRC_V1);
+    const u8 appinit_v1_res = sd_send_cmd_r1(SdCmd_AppInit, APP_INIT_ARG_V1, APP_INIT_CRC_V1);
 
     if (appinit_v1_res == R1_NONE)
         goto init_mmc;
@@ -227,56 +215,62 @@ app_init_v1:
 
     // TODO: add timeout
 init_mmc:
-    const u8 init_res = sd_send_cmd_r1(SD_INIT, INIT_ARG, INIT_CRC);
+    const u8 init_res = sd_send_cmd_r1(SdCmd_Init, INIT_ARG, INIT_CRC);
 
     if (init_res == R1_NONE)
-        return SD_INIT_ERR_NOINIT;
+        return SdInitResult_ErrNoInit;
     else if (init_res == 0x00) // MMC v3
         goto set_blocklen;
     else
         goto init_mmc;
 
 set_blocklen:
-    const u8 setblocklen_res = sd_send_cmd_r1(SD_SET_BLOCKLEN, SET_BLOCKLEN_ARG, SET_BLOCKLEN_CRC);
+    ctx.address_mode = AddressMode_Byte;
+    const u8 setblocklen_res =
+        sd_send_cmd_r1(SdCmd_SetBlockLen, SET_BLOCKLEN_ARG, SET_BLOCKLEN_CRC);
 
     if (setblocklen_res == 0x00)
         goto inc_sclk_speed;
     else
-        return SD_INIT_ERR_NOSETBLOCKLEN;
+        return SdInitResult_ErrNoSetBlockLen;
 
 inc_sclk_speed:
     spi_set_freq(SPI_FREQ);
-    return SD_INIT_OK;
+    ctx.ready = true;
+
+    return SdInitResult_Ok;
 }
 
-void sd_read_block(const u32 block_addr)
+SdReadResult sd_read_block(u32 block_addr, u8 buf[static SD_BLOCK_SIZE])
 {
+    if (!ctx.ready)
+        return SdReadResult_NotReady;
+
+    if (ctx.address_mode == AddressMode_Byte)
+        block_addr *= SD_BLOCK_SIZE;
+
     constexpr u32 READ_SINGLE_BLOCK_CRC = 0x00;
-
     constexpr u8 START_TOKEN = 0xFE;
-
     constexpr size_t MAX_READ_ATTEMPTS = 3000;
+
+    SdReadResult result = SdReadResult_Ok;
 
     spi_write(0xFF);
     spi_cs_enable();
     spi_write(0xFF);
 
-    spi_write(SD_READ_SINGLE_BLOCK | CMD_START_BITS);
+    spi_write(SdCmd_ReadSingleBlock | CMD_START_BITS);
     spi_write_u32(block_addr);
     spi_write(READ_SINGLE_BLOCK_CRC);
 
     const u8 res = sd_read_r1();
 
     if (res != 0x00) {
-        printf("could not read block (res = %02X)\n", res);
-        for (size_t i = 0; i < 15; ++i)
-            printf("%02X ", spi_read());
-
-        printf("\n");
+        result = SdReadResult_InvalidRes;
         goto cleanup;
     }
 
-    u8 read;
+    u8 read = 0xFF;
 
     for (size_t i = 0; i < MAX_READ_ATTEMPTS; ++i) {
         read = spi_read();
@@ -285,44 +279,40 @@ void sd_read_block(const u32 block_addr)
     }
 
     if (read != START_TOKEN) {
-        printf("read timed out (last read = %02X)\n", read);
+        result = SdReadResult_TimedOut;
         goto cleanup;
     }
 
-    for (size_t i = 0; i < BLOCK_SIZE; ++i) {
-        const u8 byte = spi_read();
-        printf("%02X ", byte);
-        fflush(nullptr);
-    }
+    for (size_t i = 0; i < SD_BLOCK_SIZE; ++i)
+        *buf++ = spi_read();
 
     // read crc
     const u8 crc_hi = spi_read();
     const u8 crc_lo = spi_read();
-    const u16 crc = ((u16)crc_hi << 8) | crc_lo;
-
-    printf("\n");
-    printf("crc: %04X\n", crc);
+    [[maybe_unused]] const u16 crc = concat_u16(crc_hi, crc_lo);
 
 cleanup:
     spi_write(0xFF);
     spi_cs_disable();
     spi_write(0xFF);
+
+    return result;
 }
 
 const char *sd_init_result_str(const SdInitResult init_result)
 {
     switch (init_result) {
-    case SD_INIT_OK:
+    case SdInitResult_Ok:
         return "ok";
-    case SD_INIT_ERR_NOIDLE:
+    case SdInitResult_ErrNoIdle:
         return "GO_IDLE timed out or did not respond correctly";
-    case SD_INIT_ERR_NOOCR:
+    case SdInitResult_ErrNoOcr:
         return "could not read OCR";
-    case SD_INIT_ERR_NOAPPINIT:
+    case SdInitResult_ErrNoAppInit:
         return "APP_INIT did not respond correctly";
-    case SD_INIT_ERR_NOINIT:
+    case SdInitResult_ErrNoInit:
         return "INIT did not respond correctly";
-    case SD_INIT_ERR_NOSETBLOCKLEN:
+    case SdInitResult_ErrNoSetBlockLen:
         return "SET_BLOCKLEN did not respond correctly";
     default:
         return "unknown init result";

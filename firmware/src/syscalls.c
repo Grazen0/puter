@@ -123,6 +123,6 @@ int wait([[maybe_unused]] int *const status)
 
 int _write([[maybe_unused]] const int file, char *const ptr, const int len)
 {
-    vga_sprint(ptr, len);
+    vga_sprint(len, ptr);
     return len;
 }

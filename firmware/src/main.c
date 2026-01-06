@@ -5,7 +5,6 @@
 #include "riscv.h"
 #include "rtc.h"
 #include "sd_card.h"
-#include "spi.h"
 #include "vga.h"
 #include <stddef.h>
 #include <stdio.h>
@@ -20,7 +19,7 @@ static const char banner[] = "\
 
 void kmain()
 {
-    printf("kernel!\n");
+    vga_print("kernel!\n");
     __asm__ volatile("csrr t0, mepc"); // should trigger illegal instruction exception
     PANIC("should not have reached here");
 }
@@ -29,55 +28,54 @@ void main()
 {
     vga_init();
 
-    printf("Initializing RTC...\n");
+    vga_print("Initializing RTC...\n");
     rtc_init();
 
-    printf("Initializing PLIC...\n");
+    vga_print("Initializing PLIC...\n");
     for (size_t i = 0; i < PLIC_PORTS; ++i) {
         PLIC->int_enable[i] = 1;
         PLIC->int_priority[i] = 1 + i;
     }
 
-    printf("Initializing keyboard driver...\n");
+    vga_print("Initializing keyboard driver...\n");
     kb_init();
 
-    printf("Initializing SD card...\n");
+    vga_print("Initializing SD card...\n");
     const SdInitResult sd_result = sd_init();
 
-    if (sd_result != SD_INIT_OK) {
-        const char *const msg = sd_init_result_str(sd_result);
-        printf("Could not initialize SD card: %s (code = %d)\n", msg, sd_result);
+    if (sd_result != SdInitResult_Ok) {
+        vga_print("Could not initialize SD card: ");
+        vga_print(sd_init_result_str(sd_result));
+        vga_print("\n");
     }
 
-    printf("Enabling interrupts...\n");
-    rv_mie_set(MIE_TIMER | MIE_EXTERNAL);
-    rv_mstatus_set(MSTATUS_MIE);
+    vga_print("Enabling interrupts...\n");
+    rv_set_mie(MieBit_Timer | MieBit_External);
+    rv_set_mstatus(MStatus_Mie);
 
-    printf("\n");
+    vga_print("\n");
 
-    const u32 mcycle = rv_read_mcycle();
-    const u32 minstret = rv_read_minstret();
-    printf("mcycle = %d, minstret = %d\n", mcycle, minstret);
-
-    printf("Wake up, Neo...\n");
-    printf("\n");
-    printf("%s", banner);
-    printf("\n");
-    printf("Welcome to PuterOS.\n");
-    printf("\n");
+    vga_print("Wake up, Neo...\n");
+    vga_print("\n");
+    vga_print(banner);
+    vga_print("\n");
+    vga_print("Welcome to PuterOS.\n");
+    vga_print("\n");
 
     for (u8 i = 0; i < 16; ++i)
         TRAM[i].attr = i << 4;
 
-    sd_read_block(0);
+    static u8 block_buf[SD_BLOCK_SIZE];
+    sd_read_block(0, block_buf);
+
+    Key key = {};
 
     while (true) {
         kb_process_queue();
 
-        Key key = {};
-
-        while (kb_poll_key(&key))
-            printf("key: %i, mod: %08X\n", key.code, key.mod);
+        while (kb_poll_key(&key)) {
+            printf("key: %d, mod: %08X\n", key.code, key.mod);
+        }
     }
 }
 
@@ -86,26 +84,26 @@ void main()
     const u32 mcause = rv_read_mcause();
 
     switch (mcause) {
-    case MCAUSE_M_TIMER_INT:
+    case MCause_MTimerInt:
         rtc_process_interrupt();
         break;
 
-    case MCAUSE_M_EXTERNAL_INT:
+    case MCause_MExternalInt:
         const u8 int_id = MEIID;
 
         PLIC->int_claim[int_id] = 1;
 
-        if (int_id == MEIID_KEYBOARD)
+        if (int_id == MeiId_Keyboard)
             kb_process_interrupt();
 
         break;
 
-    case MCAUSE_ILLEGAL_INSTR:
+    case MCause_IllegalInstr:
         PANIC("Illegal instruction (pc = 0x%08X)\n", rv_read_mepc());
 
-    case MCAUSE_U_ECALL:
-        printf("User ecall\n");
-        rv_mepc_inc();
+    case MCause_UEcall:
+        vga_print("User ecall\n");
+        rv_inc_mepc();
         break;
 
     default:

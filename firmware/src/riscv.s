@@ -32,20 +32,20 @@ rv_read_mepc:
     csrr    a0, mepc
     ret
 
-.global rv_mepc_inc
-rv_mepc_inc:
+.global rv_inc_mepc
+rv_inc_mepc:
     csrr    t0, mepc
     addi    t0, t0, 4
     csrw    mepc, t0
     ret
 
-.global rv_mstatus_set
-rv_mstatus_set:
+.global rv_set_mstatus
+rv_set_mstatus:
     csrs    mstatus, a0
     ret
 
-.global rv_mie_set
-rv_mie_set:
+.global rv_set_mie
+rv_set_mie:
     csrs    mie, a0
     ret
 

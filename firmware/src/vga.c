@@ -5,43 +5,43 @@
 #include <stdlib.h>
 
 typedef enum : u8 {
-    ATTR_FG_BLACK = 0x00,
-    ATTR_FG_BLUE = 0x01,
-    ATTR_FG_GREEN = 0x02,
-    ATTR_FG_CYAN = 0x03,
-    ATTR_FG_RED = 0x04,
-    ATTR_FG_MAGENTA = 0x05,
-    ATTR_FG_BROWN = 0x06,
-    ATTR_FG_GRAY = 0x07,
-    ATTR_FG_DARK_GRAY = 0x08,
-    ATTR_FG_BRIGHT_BLUE = 0x09,
-    ATTR_FG_BRIGHT_GREEN = 0x0A,
-    ATTR_FG_BRIGHT_CYAN = 0x0B,
-    ATTR_FG_BRIGHT_RED = 0x0C,
-    ATTR_FG_BRIGHT_MAGENTA = 0x0D,
-    ATTR_FG_BRIGHT_YELLOW = 0x0E,
-    ATTR_FG_WHITE = 0x0F,
+    CharAttr_FgBlack = 0x00,
+    CharAttr_FgBlue = 0x01,
+    CharAttr_FgGreen = 0x02,
+    CharAttr_FgCyan = 0x03,
+    CharAttr_FgRed = 0x04,
+    CharAttr_FgMagenta = 0x05,
+    CharAttr_FgBrown = 0x06,
+    CharAttr_FgGray = 0x07,
+    CharAttr_FgDarkGray = 0x08,
+    CharAttr_FgBrightBlue = 0x09,
+    CharAttr_FgBrightGreen = 0x0A,
+    CharAttr_FgBrightCyan = 0x0B,
+    CharAttr_FgBrightRed = 0x0C,
+    CharAttr_FgBrightMagenta = 0x0D,
+    CharAttr_FgBrightYellow = 0x0E,
+    CharAttr_FgWhite = 0x0F,
 
-    ATTR_BG_BLACK = 0x00,
-    ATTR_BG_BLUE = 0x10,
-    ATTR_BG_GREEN = 0x20,
-    ATTR_BG_CYAN = 0x30,
-    ATTR_BG_RED = 0x40,
-    ATTR_BG_MAGENTA = 0x50,
-    ATTR_BG_BROWN = 0x60,
-    ATTR_BG_GRAY = 0x70,
-    ATTR_BG_DARK_GRAY = 0x80,
-    ATTR_BG_BRIGHT_BLUE = 0x90,
-    ATTR_BG_BRIGHT_GREEN = 0xA0,
-    ATTR_BG_BRIGHT_CYAN = 0xB0,
-    ATTR_BG_BRIGHT_RED = 0xC0,
-    ATTR_BG_BRIGHT_MAGENTA = 0xD0,
-    ATTR_BG_BRIGHT_YELLOW = 0xE0,
-    ATTR_BG_WHITE = 0xF0,
-} TextAttr;
+    CharAttr_BgBlack = 0x00,
+    CharAttr_BgBlue = 0x10,
+    CharAttr_BgGreen = 0x20,
+    CharAttr_BgCyan = 0x30,
+    CharAttr_BgRED = 0x40,
+    CharAttr_BgMagenta = 0x50,
+    CharAttr_BgBrown = 0x60,
+    CharAttr_BgGray = 0x70,
+    CharAttr_BgDarkGray = 0x80,
+    CharAttr_BgBrightBlue = 0x90,
+    CharAttr_BgBrightGreen = 0xA0,
+    CharAttr_BgBrightCyan = 0xB0,
+    CharAttr_BgBrightRed = 0xC0,
+    CharAttr_BgBrightMagenta = 0xD0,
+    CharAttr_BgBrightYellow = 0xE0,
+    CharAttr_BgWhite = 0xF0,
+} CharAttr;
 
 constexpr size_t TAB_WIDTH = 4;
-constexpr u16 VVALUE_EMPTY = (ATTR_FG_WHITE | ATTR_BG_BLACK) << 8;
+constexpr u16 VVALUE_EMPTY = (u16)(CharAttr_FgWhite | CharAttr_BgBlack) << 8;
 
 typedef struct {
     size_t tram_idx;
@@ -66,25 +66,7 @@ static inline void update_cursor_pos()
     VREGS->cursor_pos = ctx.tram_idx;
 }
 
-void vga_init()
-{
-    ctx = (VgaContext){
-        .tram_idx = 0,
-        .base_value = (u16)(ATTR_FG_WHITE | ATTR_BG_BLACK) << 8,
-    };
-
-    vga_clear();
-}
-
-void vga_clear()
-{
-    ctx.tram_idx = 0;
-
-    for (size_t i = 0; i < TRAM_SIZE; ++i)
-        TRAM[i].value = VVALUE_EMPTY;
-}
-
-void vga_print_char(const char ch)
+static void vga_putchar_inner(const char ch)
 {
 #ifndef NDEBUG
     DBG->out = ch;
@@ -115,18 +97,46 @@ void vga_print_char(const char ch)
         scroll();
         ctx.tram_idx = (SCREEN_ROWS - 1) * SCREEN_COLS;
     }
+}
+
+void vga_init()
+{
+    ctx = (VgaContext){
+        .tram_idx = 0,
+        .base_value = VVALUE_EMPTY,
+    };
+
+    vga_clear();
+}
+
+void vga_clear()
+{
+    ctx.tram_idx = 0;
+
+    for (size_t i = 0; i < TRAM_SIZE; ++i)
+        TRAM[i].value = VVALUE_EMPTY;
 
     update_cursor_pos();
 }
 
-void vga_print(const char *s)
+void vga_putchar(const char ch)
 {
-    while (*s != '\0')
-        vga_print_char(*s++);
+    vga_putchar_inner(ch);
+    update_cursor_pos();
 }
 
-void vga_sprint(const char *s, size_t n)
+void vga_print(const char s[static 1])
+{
+    while (*s != '\0')
+        vga_putchar_inner(*s++);
+
+    update_cursor_pos();
+}
+
+void vga_sprint(size_t n, const char s[static n + 1])
 {
     while (n-- != 0)
-        vga_print_char(*s++);
+        vga_putchar_inner(*s++);
+
+    update_cursor_pos();
 }

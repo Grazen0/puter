@@ -66,7 +66,7 @@ typedef struct {
 } Plic;
 
 typedef enum : u8 {
-    MEIID_KEYBOARD = 0,
+    MeiId_Keyboard = 0,
 } MeiId;
 
 constexpr size_t SCREEN_ROWS = 30;
