@@ -289,7 +289,7 @@ static KeyMod make_keymod()
     return mod;
 }
 
-static inline void kb_key_push(const Key *const key)
+static inline void kb_key_push(const Key key[static const 1])
 {
     memcpy(&ctx.key_buf[ctx.kb_tail], key, sizeof(*key));
 
@@ -380,7 +380,7 @@ void kb_process_queue()
         kb_process_scancode(kb_scancode_take());
 }
 
-bool kb_poll_key(Key *const out)
+bool kb_poll_key(Key out[static const 1])
 {
     if (ctx.kb_head == ctx.kb_tail)
         return false;

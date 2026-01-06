@@ -124,6 +124,6 @@ void kb_process_interrupt();
 
 void kb_process_queue();
 
-bool kb_poll_key(Key *out);
+bool kb_poll_key(Key out[static 1]);
 
 #endif
