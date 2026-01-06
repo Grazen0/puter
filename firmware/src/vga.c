@@ -61,6 +61,11 @@ static inline void scroll()
         TRAM[((SCREEN_ROWS - 1) * SCREEN_COLS) + j].value = VVALUE_EMPTY;
 }
 
+static inline void update_cursor_pos()
+{
+    VREGS->cursor_pos = ctx.tram_idx;
+}
+
 void vga_init()
 {
     ctx = (VgaContext){
@@ -81,7 +86,7 @@ void vga_clear()
 
 void vga_print_char(const char ch)
 {
-#ifdef DEBUG
+#ifndef NDEBUG
     DBG->out = ch;
 #endif
 
@@ -111,7 +116,7 @@ void vga_print_char(const char ch)
         ctx.tram_idx = (SCREEN_ROWS - 1) * SCREEN_COLS;
     }
 
-    VREGS->cursor_pos = ctx.tram_idx;
+    update_cursor_pos();
 }
 
 void vga_print(const char *s)
