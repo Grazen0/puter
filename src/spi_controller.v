@@ -35,6 +35,7 @@ module spi_controller #(
   reg sclk_next;
   reg ss_next;
   reg mosi_next;
+  reg [7:0] rdata_next;
   reg rdata_valid_next;
 
   reg [1:0] state, state_next;
@@ -55,6 +56,7 @@ module spi_controller #(
     data_buf_next    = data_buf;
     bit_ctr_next     = bit_ctr;
     half_period_next = half_period;
+    rdata_next       = rdata;
     rdata_valid_next = rdata_valid;
 
     case (state)
@@ -95,7 +97,8 @@ module spi_controller #(
 
           if (bit_ctr_next == 0) begin
             state_next       = S_IDLE;
-            rdata_valid_next = 0;
+            rdata_next       = data_buf;
+            rdata_valid_next = 1;
           end else begin
             state_next = S_CLK_DOWN;
           end
@@ -119,6 +122,7 @@ module spi_controller #(
       mosi        <= 1;
       state       <= S_IDLE;
       ctr         <= 0;
+      rdata       <= 0;
       rdata_valid <= 0;
     end else begin
       sclk        <= sclk_next;
@@ -129,6 +133,7 @@ module spi_controller #(
       data_buf    <= data_buf_next;
       bit_ctr     <= bit_ctr_next;
       half_period <= half_period_next;
+      rdata       <= rdata_next;
       rdata_valid <= rdata_valid_next;
     end
   end
