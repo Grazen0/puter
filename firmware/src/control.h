@@ -13,9 +13,8 @@
 
 #define PANIC_IF(cond, ...)     \
     do {                        \
-        if (cond) {             \
+        if (cond)               \
             PANIC(__VA_ARGS__); \
-        }                       \
     } while (false)
 
 #endif
