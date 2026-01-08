@@ -1,12 +1,12 @@
-#ifndef FIRMWARE_CONTROL_H
-#define FIRMWARE_CONTROL_H
+#ifndef PUTEROS_CONTROL_h
+#define PUTEROS_CONTROL_h
 
-#include <stdio.h>
+#include "io.h"
 
 #define PANIC(...)                                             \
     do {                                                       \
-        printf("PANIC (%s:%lld)\n", __FILE__, __LINE__ + 0LL); \
-        __VA_OPT__(printf(__VA_ARGS__);)                       \
+        printk("PANIC (%s:%lld)\n", __FILE__, __LINE__ + 0LL); \
+        __VA_OPT__(printk(__VA_ARGS__);)                       \
         while (true) {                                         \
         }                                                      \
     } while (false)

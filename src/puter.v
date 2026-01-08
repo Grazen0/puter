@@ -25,6 +25,9 @@ module puter (
 );
   localparam MEI_PORTS = 2;
 
+  localparam INSTR_SEL_ROM = 1'b0;
+  localparam INSTR_SEL_RAM = 1'b1;
+
   localparam DATA_SEL_ROM = 4'd0;
   localparam DATA_SEL_RAM = 4'd1;
   localparam DATA_SEL_TRAM = 4'd2;
@@ -34,10 +37,10 @@ module puter (
   localparam DATA_SEL_KEYBOARD_DATA = 4'd6;
   localparam DATA_SEL_UART = 4'd7;
   localparam DATA_SEL_VREGS = 4'd8;
-  localparam DATA_SEL_SPI = 4'd9;
+  localparam DATA_SEL_SPI = 4'd10;
 
   wire [31:0] instr_addr;
-  wire [31:0] instr_rdata;
+  reg  [31:0] instr_rdata;
 
   wire [31:0] data_addr;
   wire [31:0] data_wdata;
@@ -62,21 +65,34 @@ module puter (
       .mei_pending(mei_pending)
   );
 
+  reg       instr_sel;
   reg [3:0] data_sel;
 
   always @(*) begin
+    casez (instr_addr[31])
+      1'b0:    instr_sel = INSTR_SEL_ROM;
+      1'b1:    instr_sel = INSTR_SEL_RAM;
+      default: instr_sel = 1'bx;
+    endcase
+
     casez (data_addr[31:27])
-      5'b0zzz_z: data_sel = DATA_SEL_ROM;
-      5'b10zz_z: data_sel = DATA_SEL_RAM;
-      5'b1100_0: data_sel = DATA_SEL_TRAM;
-      5'b1100_1: data_sel = DATA_SEL_VREGS;
-      5'b1101_0: data_sel = DATA_SEL_UART;
-      5'b1101_1: data_sel = DATA_SEL_SPI;
-      5'b1110_0: data_sel = DATA_SEL_RTC;
-      5'b1110_1: data_sel = DATA_SEL_KEYBOARD_DATA;
-      5'b1111_0: data_sel = DATA_SEL_PLIC;
-      5'b1111_1: data_sel = DATA_SEL_MEI_ID;
-      default:   data_sel = {32{1'bx}};
+      5'b0000_0: data_sel = DATA_SEL_ROM;
+      5'b0000_1: data_sel = DATA_SEL_TRAM;
+      5'b0001_0: data_sel = DATA_SEL_VREGS;
+      5'b0001_1: data_sel = DATA_SEL_UART;
+      5'b0010_0: data_sel = DATA_SEL_SPI;
+      5'b0010_1: data_sel = DATA_SEL_RTC;
+      5'b0011_0: data_sel = DATA_SEL_KEYBOARD_DATA;
+      5'b0011_1: data_sel = DATA_SEL_PLIC;
+      5'b01zz_z: data_sel = DATA_SEL_MEI_ID;
+      5'b1zzz_z: data_sel = DATA_SEL_RAM;
+      default:   data_sel = 4'bxxxx;
+    endcase
+
+    case (instr_sel)
+      INSTR_SEL_ROM: instr_rdata = rom_rinstr;
+      INSTR_SEL_RAM: instr_rdata = ram_rinstr;
+      default:       instr_rdata = {32{1'bx}};
     endcase
 
     case (data_sel)
@@ -101,33 +117,38 @@ module puter (
     endcase
   end
 
+  wire [31:0] rom_rinstr;
   wire [31:0] rom_rdata;
 
   dual_word_rom #(
-      .SOURCE_FILE("/home/jdgt/Code/verilog/puter/build/firmware/firmware.mem")
+      .SIZE_BYTES(8 * (2 ** 10)),  // 8K
+      .SOURCE_FILE("/home/jdgt/Code/verilog/puter/firmware/build/firmware.mem")
   ) rom (
-      .addr_1 (instr_addr[14:0]),
-      .rdata_1(instr_rdata),
+      .addr_1 (instr_addr[12:0]),
+      .rdata_1(rom_rinstr),
 
-      .addr_2 (data_addr[14:0]),
+      .addr_2 (data_addr[12:0]),
       .rdata_2(rom_rdata)
   );
 
   wire [31:0] ram_rdata;
+  wire [31:0] ram_rinstr;
 
-  word_ram #(
-      .SIZE_BYTES(4096)  // 4K
+  dual_word_ram #(
+      .SIZE_BYTES(32 * (2 ** 10))  // 32K
   ) ram (
       .clk(sys_clk),
 
-      .addr_1   (data_addr[11:0]),
+      .addr_1   (data_addr[14:0]),
       .wdata_1  (data_wdata),
       .wenable_1(data_wenable & {4{data_sel == DATA_SEL_RAM}}),
-      .rdata_1  (ram_rdata)
+      .rdata_1  (ram_rdata),
+
+      .addr_2 (instr_addr[14:0]),
+      .rdata_2(ram_rinstr)
   );
 
   wire [15:0] tram_rdata;
-
   wire [15:0] vregs_rdata;
 
   video_unit #(

@@ -1,7 +1,8 @@
 `default_nettype none `timescale 1ns / 1ps
 
 module dual_word_rom #(
-    parameter SIZE_WORDS  = 2 ** 13,
+    parameter SIZE_BYTES  = 0,
+    parameter SIZE_WORDS  = SIZE_BYTES / 4,
     parameter SOURCE_FILE = "",
     parameter ADDR_WIDTH  = $clog2(4 * SIZE_WORDS)
 ) (

@@ -5,9 +5,6 @@ _start:
     la      sp, _stack_top
     la      gp, __global_pointer$
 
-    la      t0, trap_handler
-    csrw    mtvec, t0
-
     # Initialize .data
     la      t0, _data_start
     la      t1, _data_end
@@ -33,6 +30,5 @@ clear_bss:
     j       clear_bss
 bss_done:
 
-    call    __libc_init_array
     call    main
     j       .

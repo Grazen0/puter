@@ -40,8 +40,7 @@ typedef enum : u8 {
     CharAttr_BgWhite = 0xF0,
 } CharAttr;
 
-static constexpr u16 VVALUE_EMPTY = (u16)(CharAttr_FgWhite | CharAttr_BgBlack)
-                                    << 8;
+constexpr u16 VVALUE_EMPTY = (u16)(CharAttr_FgWhite | CharAttr_BgBlack) << 8;
 
 typedef struct {
     size_t tram_idx;
@@ -79,7 +78,6 @@ static void vga_putchar_inner(const char ch)
         ctx.tram_idx += SCREEN_COLS - mod_naive(ctx.tram_idx, SCREEN_COLS);
         break;
 
-#ifdef PUTCHAR_FULL
     case '\r':
         ctx.tram_idx -= mod_naive(ctx.tram_idx, SCREEN_COLS);
         break;
@@ -91,7 +89,6 @@ static void vga_putchar_inner(const char ch)
             TRAM[ctx.tram_idx++].value = VVALUE_EMPTY;
         } while (mod_naive(ctx.tram_idx, TAB_WIDTH) != 0);
         break;
-#endif
 
     default:
         TRAM[ctx.tram_idx++].value = value;
@@ -137,23 +134,10 @@ void vga_print(const char s[static 1])
     update_cursor_pos();
 }
 
-#define vga_sprint(s, n) vga_sprint(n, s)
-
 void(vga_sprint)(size_t n, const char s[static n])
 {
     while (n-- != 0)
         vga_putchar_inner(*s++);
 
     update_cursor_pos();
-}
-
-static inline void vga_print_nib(const u8 nib)
-{
-    vga_putchar(nib < 10 ? '0' + nib : 'A' + nib - 10);
-}
-
-void vga_print_hex(const u8 n)
-{
-    vga_print_nib((n >> 4) & 0x0F);
-    vga_print_nib(n & 0x0F);
 }

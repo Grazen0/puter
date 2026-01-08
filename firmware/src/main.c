@@ -1,112 +1,108 @@
-#include "control.h"
-#include "keyboard.h"
+#include "disk_format.h"
 #include "numeric.h"
-#include "puter.h"
-#include "riscv.h"
-#include "rtc.h"
 #include "sd_card.h"
 #include "vga.h"
 #include <stddef.h>
-#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 
-static const char banner[] = "\
- ____        _             ___  ____   \n\
-|  _ \\ _   _| |_ ___ _ __ / _ \\/ ___|  \n\
-| |_) | | | | __/ _ \\ '__| | | \\___ \\  \n\
-|  __/| |_| | ||  __/ |  | |_| |___) | \n\
-|_|    \\__,_|\\__\\___|_|   \\___/|____/  \n\
-";
-
-void kmain()
+static bool memeq(const void *const s1, const void *const s2, size_t n)
 {
-    vga_print("kernel!\n");
-    __asm__ volatile("csrr t0, mepc"); // should trigger illegal instruction exception
-    PANIC("should not have reached here");
+    const u8 *s1_b = s1;
+    const u8 *s2_b = s2;
+
+    while (n--) {
+        if (*s1_b++ != *s2_b++)
+            return false;
+    }
+
+    return true;
+}
+
+static bool find_kernel_img(FatWalker walker[static const 1],
+                            const Fat32 fat[static const 1],
+                            DirEntry out_dirent[static const 1])
+{
+    constexpr char FILENAME[] = "KERNEL  BIN"; // 8.3 filename format
+
+    fatwlk_init(walker, fat->bpb.root_clus);
+
+    while (true) {
+        if (!fatwlk_read(walker, fat, sizeof(*out_dirent), out_dirent))
+            return false;
+
+        if (out_dirent->filename[0] == '\0')
+            return false;
+
+        if (dirent_is_item(out_dirent) &&
+            memeq(out_dirent->filename, FILENAME, sizeof(FILENAME) - 1))
+            return true;
+    }
+
+    unreachable();
 }
 
 void main()
 {
     vga_init();
 
-    vga_print("Initializing RTC...\n");
-    rtc_init();
-
-    vga_print("Initializing PLIC...\n");
-    for (size_t i = 0; i < PLIC_PORTS; ++i) {
-        PLIC->int_enable[i] = 1;
-        PLIC->int_priority[i] = 1 + i;
-    }
-
-    vga_print("Initializing keyboard driver...\n");
-    kb_init();
-
-    vga_print("Initializing SD card...\n");
     const SdInitResult sd_result = sd_init();
 
     if (sd_result != SdInitResult_Ok) {
-        vga_print("Could not initialize SD card: ");
-        vga_print(sd_init_result_str(sd_result));
-        vga_print("\n");
-    }
-
-    vga_print("Enabling interrupts...\n");
-    rv_set_mie(MieBit_Timer | MieBit_External);
-    rv_set_mstatus(MStatus_Mie);
-
-    vga_print("\n");
-
-    vga_print("Wake up, Neo...\n");
-    vga_print("\n");
-    vga_print(banner);
-    vga_print("\n");
-    vga_print("Welcome to PuterOS.\n");
-    vga_print("\n");
-
-    for (u8 i = 0; i < 16; ++i)
-        TRAM[i].attr = i << 4;
-
-    static u8 block_buf[SD_BLOCK_SIZE];
-    sd_read_block(0, block_buf);
-
-    Key key = {};
-
-    while (true) {
-        kb_process_queue();
-
-        while (kb_poll_key(&key)) {
-            printf("key: %d, mod: %08X\n", key.code, key.mod);
+        if (sd_result == SdInitResult_ErrGoIdleTimedOut) {
+            vga_print("No SD card detected.\n");
+        } else {
+            vga_print("SD card init sequence failed: ");
+            vga_print(sd_init_result_str(sd_result));
+            vga_putchar('\n');
         }
+        return;
     }
-}
 
-[[gnu::interrupt]] void trap_handler()
-{
-    const u32 mcause = rv_read_mcause();
+    diskfmt_init();
 
-    switch (mcause) {
-    case MCause_MTimerInt:
-        rtc_process_interrupt();
-        break;
-
-    case MCause_MExternalInt:
-        const u8 int_id = MEIID;
-
-        PLIC->int_claim[int_id] = 1;
-
-        if (int_id == MeiId_Keyboard)
-            kb_process_interrupt();
-
-        break;
-
-    case MCause_IllegalInstr:
-        PANIC("Illegal instruction (pc = 0x%08X)\n", rv_read_mepc());
-
-    case MCause_UEcall:
-        vga_print("User ecall\n");
-        rv_inc_mepc();
-        break;
-
-    default:
-        PANIC("Unknown trap (mcause = 0x%08X)\n", mcause);
+    MbrEntry mbr_entry;
+    if (!mbr_parse_first_entry(&mbr_entry)) {
+        vga_print("SD card does not contain a valid MBR.\n");
+        return;
     }
+
+    if (mbr_entry.part_type == MbrPartType_Empty) {
+        vga_print("SD card is empty.\n");
+        return;
+    }
+
+    if (mbr_entry.part_type != MbrPartType_Fat32_Lba) {
+        vga_print("First partition is not FAT32.\n");
+        return;
+    }
+
+    Fat32 fat;
+
+    if (!fat32_parse(mbr_entry.start, &fat)) {
+        vga_print("First partition is not valid FAT32.\n");
+        return;
+    }
+
+    FatWalker walker;
+    DirEntry kernel_dirent;
+
+    if (!find_kernel_img(&walker, &fat, &kernel_dirent)) {
+        vga_print("kernel.bin not found.\n");
+        return;
+    }
+
+    extern u8 _kernel_start;
+
+    fatwlk_init(&walker, dirent_first_clus(&kernel_dirent));
+
+    if (!fatwlk_read(&walker, &fat, kernel_dirent.size, &_kernel_start)) {
+        vga_print("Reached end of kernel.bin unexpectedly.\n");
+        return;
+    }
+
+    auto const kmain = (void (*)())(uintptr_t)&_kernel_start;
+    kmain();
+
+    unreachable();
 }

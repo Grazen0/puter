@@ -8,11 +8,10 @@ constexpr size_t SD_BLOCK_SIZE = 512;
 
 typedef enum {
     SdInitResult_Ok,
-    SdInitResult_ErrNoIdle,
-    SdInitResult_ErrNoOcr,
-    SdInitResult_ErrNoAppInit,
+    SdInitResult_ErrGoIdleTimedOut,
     SdInitResult_ErrNoInit,
     SdInitResult_ErrNoSetBlockLen,
+    SdInitResult_ErrNoAcmdLeading,
 } SdInitResult;
 
 typedef enum {
@@ -24,7 +23,8 @@ typedef enum {
 
 SdInitResult sd_init();
 
-SdReadResult sd_read_block(u32 addr, u8 buf[static SD_BLOCK_SIZE]);
+[[nodiscard]] SdReadResult sd_read_block(u32 block_addr,
+                                         u8 buf[static SD_BLOCK_SIZE]);
 
 const char *sd_init_result_str(SdInitResult init_result);
 

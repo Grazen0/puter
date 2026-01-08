@@ -36,7 +36,7 @@ module top_tb ();
   );
 
   always @(posedge top.sys_clk) begin
-    if (|top.puter.data_wenable && top.puter.data_addr == 32'h1000_0000) begin
+    if (|top.puter.data_wenable && top.puter.data_addr == 32'h0000_FFFF) begin
       $write("%c", top.puter.data_wdata);
       $fflush();
     end
@@ -94,9 +94,9 @@ module top_tb ();
 
     $display("");
 
-    sd_miso = 1;
+    sd_miso = 0;
 
-    #1_000_000;
+    #2_000_000;
     $display("");
     $finish();
   end

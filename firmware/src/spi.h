@@ -9,7 +9,7 @@ void spi_cs_enable();
 
 void spi_cs_disable();
 
-void spi_set_freq(size_t freq);
+void spi_set_hperiod(size_t half_period);
 
 u8 spi_transfer(u8 write_data);
 

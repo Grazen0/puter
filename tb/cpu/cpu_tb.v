@@ -13,23 +13,24 @@ module cpu_tb ();
   wire [31:0] rom_rdata;
 
   dual_word_rom #(
-      .SOURCE_FILE("/home/jdgt/Code/verilog/puter/build/firmware/firmware.mem")
+      .SIZE_BYTES(8 * (2 ** 10)),  // 8K
+      .SOURCE_FILE("/home/jdgt/Code/verilog/puter/firmware/build/firmware.mem")
   ) rom (
-      .addr_1 (instr_addr[14:0]),
+      .addr_1 (instr_addr[12:0]),
       .rdata_1(instr_rdata),
 
-      .addr_2 (data_addr[14:0]),
+      .addr_2 (data_addr[12:0]),
       .rdata_2(rom_rdata)
   );
 
   wire [31:0] ram_rdata;
 
-  word_ram #(
-      .SIZE_BYTES(4096)  // 4K
+  dual_word_ram #(
+      .SIZE_BYTES(64 * (2 ** 10))  // 64K
   ) ram (
       .clk(clk),
 
-      .addr_1   (data_addr[14:0]),
+      .addr_1   (data_addr[15:0]),
       .wdata_1  (data_wdata),
       .wenable_1(data_wenable & {4{data_addr[31]}}),
       .rdata_1  (ram_rdata)
@@ -55,7 +56,7 @@ module cpu_tb ();
 
   always @(posedge clk) begin
     #1;
-    if (|data_wenable && data_addr == 32'h1000_0000) begin
+    if (|data_wenable && data_addr == 32'h0000_FFFF) begin
       $write("%c", data_wdata);
       $fflush();
     end

@@ -21,10 +21,10 @@ void spi_cs_disable()
     SPI->cs = 1;
 }
 
-void spi_set_freq(const size_t freq)
+void spi_set_hperiod(const size_t half_period)
 {
     spi_wait_ready();
-    SPI->sclk_half_period = SYS_CLK_FREQ / (2 * freq);
+    SPI->sclk_half_period = half_period;
 }
 
 u8 spi_transfer(const u8 write_data)
