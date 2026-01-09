@@ -10,21 +10,14 @@ typedef struct {
     unsigned min_width;
     unsigned precision;
     char pad_char;
-    bool align_left;
-    bool pad_sign;
-    bool always_sign;
-    bool alt;
 } PrintCtx;
 
-static inline PrintCtx make_print_ctx()
+static inline void print_ctx_init(PrintCtx ctx[static const 1])
 {
-    return (PrintCtx){
+    *ctx = (PrintCtx){
         .min_width = 0,
         .precision = UINT_MAX,
         .pad_char = ' ',
-        .pad_sign = false,
-        .always_sign = false,
-        .alt = false,
     };
 }
 
@@ -34,8 +27,8 @@ static inline PrintCtx make_print_ctx()
 
 static void print_l(const long n, const PrintCtx ctx[static const 1])
 {
-    static constexpr size_t LL_DIGITS = MAX_DEC_DIGITS(n);
-    static char buf[LL_DIGITS + 1]; // Extra char for sign
+    static constexpr size_t BUF_SIZE = MAX_DEC_DIGITS(n);
+    char buf[BUF_SIZE + 1]; // Extra char for sign
 
     size_t i = 0;
 
@@ -53,31 +46,20 @@ static void print_l(const long n, const PrintCtx ctx[static const 1])
 
     if (n < 0)
         buf[i++] = '-';
-    else if (ctx->always_sign)
-        buf[i++] = '+';
-    else if (ctx->pad_sign)
-        buf[i++] = ' ';
 
     size_t pad_size = i >= ctx->min_width ? 0 : ctx->min_width - i;
 
-    if (!ctx->align_left) {
-        while (pad_size-- > 0)
-            vga_putchar(ctx->pad_char);
-    }
+    while (pad_size-- > 0)
+        vga_putchar(ctx->pad_char);
 
     while (i > 0)
         vga_putchar(buf[--i]);
-
-    if (ctx->align_left) {
-        while (pad_size-- > 0)
-            vga_putchar(ctx->pad_char);
-    }
 }
 
 static void print_lu(unsigned long n, const PrintCtx ctx[static const 1])
 {
-    static constexpr size_t LL_DIGITS = MAX_DEC_DIGITS(n);
-    static char buf[LL_DIGITS];
+    static constexpr size_t BUF_SIZE = MAX_DEC_DIGITS(n);
+    char buf[BUF_SIZE];
 
     size_t i = 0;
 
@@ -93,18 +75,11 @@ static void print_lu(unsigned long n, const PrintCtx ctx[static const 1])
 
     size_t pad_size = i >= ctx->min_width ? 0 : ctx->min_width - i;
 
-    if (!ctx->align_left) {
-        while (pad_size-- > 0)
-            vga_putchar(ctx->pad_char);
-    }
+    while (pad_size-- > 0)
+        vga_putchar(ctx->pad_char);
 
     while (i > 0)
         vga_putchar(buf[--i]);
-
-    if (ctx->align_left) {
-        while (pad_size-- > 0)
-            vga_putchar(ctx->pad_char);
-    }
 }
 
 static void print_hex(const unsigned long n, const char a_base,
@@ -125,29 +100,16 @@ static void print_hex(const unsigned long n, const char a_base,
 
     size_t pad_size = i >= ctx->min_width ? 0 : ctx->min_width - i;
 
-    if (ctx->alt && n != 0) {
-        vga_putchar('0');
-        vga_putchar(a_base + 'x' - 'a');
-    }
-
-    if (!ctx->align_left) {
-        while (pad_size-- > 0)
-            vga_putchar(ctx->pad_char);
-    }
+    while (pad_size-- > 0)
+        vga_putchar(ctx->pad_char);
 
     while (i > 0) {
         const unsigned nib = (n >> (4 * --i)) & 0xF;
         vga_putchar(nib < 10 ? '0' + nib : a_base + nib - 10);
     }
-
-    if (ctx->align_left) {
-        while (pad_size-- > 0)
-            vga_putchar(ctx->pad_char);
-    }
 }
 
-static void print_bin(const unsigned long n, const char b_char,
-                      const PrintCtx ctx[static const 1])
+static void print_bin(const unsigned long n, const PrintCtx ctx[static const 1])
 {
     static constexpr size_t BIN_DIGITS = CHAR_BIT * sizeof(n);
 
@@ -164,24 +126,12 @@ static void print_bin(const unsigned long n, const char b_char,
 
     size_t pad_size = i >= ctx->min_width ? 0 : ctx->min_width - i;
 
-    if (ctx->alt && n != 0) {
-        vga_putchar('0');
-        vga_putchar(b_char);
-    }
-
-    if (!ctx->align_left) {
-        while (pad_size-- > 0)
-            vga_putchar(ctx->pad_char);
-    }
+    while (pad_size-- > 0)
+        vga_putchar(ctx->pad_char);
 
     while (i > 0) {
         const unsigned b = (n >> --i) & 1;
         vga_putchar('0' + b);
-    }
-
-    if (ctx->align_left) {
-        while (pad_size-- > 0)
-            vga_putchar(ctx->pad_char);
     }
 }
 
@@ -208,29 +158,15 @@ void vprintk(const char format[static restrict 1], va_list args)
             continue;
         }
 
-        PrintCtx ctx = make_print_ctx();
+        PrintCtx ctx;
+        print_ctx_init(&ctx);
 
-        while (true) {
-            switch (*format) {
-                // clang-format off
-            case '-': ctx.align_left  = true; break;
-            case '+': ctx.always_sign = true; break;
-            case ' ': ctx.pad_sign    = true; break;
-            case '#': ctx.alt         = true; break;
-            case '0': ctx.pad_char    = '0';  break;
-            default:  goto skip;
-                // clang-format on
-            }
-
+        if (*format == '0') {
+            ctx.pad_char = '0';
             ++format;
         }
-skip:
 
-        // Ignore 0 modifier when - is present.
-        if (ctx.align_left)
-            ctx.pad_char = ' ';
-
-        if (is_digit(*format) || *format == '*') {
+        if (*format == '*' || is_digit(*format)) {
             int read_value = -1;
 
             if (*format == '*') {
@@ -268,13 +204,13 @@ skip:
         case '%': vga_putchar('%');               break;
         case 'c': vga_putchar(va_arg(args, int)); break;
         case 'd':
-        case 'i': print_l(va_arg(args, int), &ctx);            break;
-        case 'u': print_lu(va_arg(args, unsigned), &ctx);      break;
+        case 'i': print_l(va_arg(args, int), &ctx);             break;
+        case 'u': print_lu(va_arg(args, unsigned), &ctx);       break;
         case 's': print_str(va_arg(args, const char *), &ctx);  break;
         case 'x': print_hex(va_arg(args, unsigned), 'a', &ctx); break;
         case 'X': print_hex(va_arg(args, unsigned), 'A', &ctx); break;
-        case 'b': print_bin(va_arg(args, unsigned), 'b', &ctx); break;
-        case 'B': print_bin(va_arg(args, unsigned), 'B', &ctx); break;
+        case 'b': print_bin(va_arg(args, unsigned), &ctx);      break;
+        case 'B': print_bin(va_arg(args, unsigned), &ctx);      break;
             // clang-format on
 
         case 'p':
@@ -292,12 +228,12 @@ skip:
             switch (*format++) {
                 // clang-format off
             case 'd':
-            case 'i': print_l(va_arg(args, ptrdiff_t), &ctx);    break;
-            case 'u': print_lu(va_arg(args, size_t), &ctx);      break;
+            case 'i': print_l(va_arg(args, ptrdiff_t), &ctx);     break;
+            case 'u': print_lu(va_arg(args, size_t), &ctx);       break;
             case 'x': print_hex(va_arg(args, size_t), 'a', &ctx); break;
             case 'X': print_hex(va_arg(args, size_t), 'A', &ctx); break;
-            case 'b': print_bin(va_arg(args, size_t), 'b', &ctx); break;
-            case 'B': print_bin(va_arg(args, size_t), 'B', &ctx); break;
+            case 'b': print_bin(va_arg(args, size_t), &ctx);      break;
+            case 'B': print_bin(va_arg(args, size_t), &ctx);      break;
             default:                                              break;
                 // clang-format on
             }
@@ -307,12 +243,12 @@ skip:
             switch (*format++) {
                 // clang-format off
             case 'd':
-            case 'i': print_l(va_arg(args, long), &ctx);                break;
-            case 'u': print_lu(va_arg(args, unsigned long), &ctx);      break;
+            case 'i': print_l(va_arg(args, long), &ctx);                 break;
+            case 'u': print_lu(va_arg(args, unsigned long), &ctx);       break;
             case 'x': print_hex(va_arg(args, unsigned long), 'a', &ctx); break;
             case 'X': print_hex(va_arg(args, unsigned long), 'A', &ctx); break;
-            case 'b': print_bin(va_arg(args, unsigned long), 'b', &ctx); break;
-            case 'B': print_bin(va_arg(args, unsigned long), 'B', &ctx); break;
+            case 'b': print_bin(va_arg(args, unsigned long), &ctx);      break;
+            case 'B': print_bin(va_arg(args, unsigned long), &ctx);      break;
             default:                                                     break;
                 // clang-format on
             }
