@@ -40,8 +40,7 @@ typedef enum : u8 {
     CharAttr_BgWhite = 0xF0,
 } CharAttr;
 
-static constexpr u16 VVALUE_EMPTY = (u16)(CharAttr_FgWhite | CharAttr_BgBlack)
-                                    << 8;
+static constexpr u16 VVALUE_EMPTY = (CharAttr_FgWhite | CharAttr_BgBlack) << 8;
 
 typedef struct {
     size_t tram_idx;
@@ -145,15 +144,4 @@ void(vga_sprint)(size_t n, const char s[static n])
         vga_putchar_inner(*s++);
 
     update_cursor_pos();
-}
-
-static inline void vga_print_nib(const u8 nib)
-{
-    vga_putchar(nib < 10 ? '0' + nib : 'A' + nib - 10);
-}
-
-void vga_print_hex(const u8 n)
-{
-    vga_print_nib((n >> 4) & 0x0F);
-    vga_print_nib(n & 0x0F);
 }
