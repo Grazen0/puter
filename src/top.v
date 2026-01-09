@@ -2,7 +2,7 @@
 
 module top (
     input wire clk,
-    input wire rst_n,
+    input wire rst,
 
     output wire [3:0] vga_red,
     output wire [3:0] vga_green,
@@ -73,7 +73,7 @@ module top (
       .sys_clk(sys_clk),
       .vga_clk(vga_clk),
       .rt_clk (clk),
-      .rst_n  (rst_n),
+      .rst_n  (~rst),
 
       .vga_red  (vga_red),
       .vga_green(vga_green),

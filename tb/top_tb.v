@@ -1,7 +1,7 @@
 `default_nettype none `timescale 1ns / 1ps
 
 module top_tb ();
-  reg clk, rst_n, ps2_clk, ps2_data, rs_rx, sd_miso;
+  reg clk, rst, ps2_clk, ps2_data, rs_rx, sd_miso;
   always #5 clk = ~clk;
 
   wire [3:0] vga_red;
@@ -14,8 +14,8 @@ module top_tb ();
   wire sd_sclk, sd_cs, sd_mosi;
 
   top top (
-      .clk  (clk),
-      .rst_n(rst_n),
+      .clk(clk),
+      .rst(rst),
 
       .ps2_clk (ps2_clk),
       .ps2_data(ps2_data),
@@ -89,8 +89,8 @@ module top_tb ();
     ps2_clk = 1;
 
     clk = 1;
-    rst_n = 0;
-    #100 rst_n = 1;
+    rst = 1;
+    #100 rst = 0;
 
     $display("");
 
