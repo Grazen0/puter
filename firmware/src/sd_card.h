@@ -21,7 +21,7 @@ typedef enum {
     SdReadResult_TimedOut,
 } SdReadResult;
 
-SdInitResult sd_init();
+[[nodiscard]] SdInitResult sd_init();
 
 [[nodiscard]] SdReadResult sd_read_block(u32 block_addr,
                                          u8 buf[static SD_BLOCK_SIZE]);
