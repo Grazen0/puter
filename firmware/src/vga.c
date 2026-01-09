@@ -71,29 +71,10 @@ static void vga_putchar_inner(const char ch)
     DBG->out = ch;
 #endif
 
-    const u16 value = ctx.base_value | ch;
-
-    switch (ch) {
-    case '\n':
+    if (ch == '\n') {
         ctx.tram_idx += SCREEN_COLS - mod_naive(ctx.tram_idx, SCREEN_COLS);
-        break;
-
-#ifdef PUTCHAR_FULL
-    case '\r':
-        ctx.tram_idx -= mod_naive(ctx.tram_idx, SCREEN_COLS);
-        break;
-
-    case '\t':
-        constexpr size_t TAB_WIDTH = 4;
-
-        do {
-            TRAM[ctx.tram_idx++].value = VVALUE_EMPTY;
-        } while (mod_naive(ctx.tram_idx, TAB_WIDTH) != 0);
-        break;
-#endif
-
-    default:
-        TRAM[ctx.tram_idx++].value = value;
+    } else {
+        TRAM[ctx.tram_idx++].value = ctx.base_value | ch;
     }
 
     if (ctx.tram_idx >= TRAM_SIZE) {

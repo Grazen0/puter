@@ -20,9 +20,7 @@ static void bbuf_load(BlockBuffer bbuf[static const 1], const u32 block_addr)
     const SdReadResult sd_result = sd_read_block(block_addr, bbuf->data);
 
     if (sd_result != SdReadResult_Ok) {
-        vga_print("Failed to read a block (code = ");
-        vga_print_hex(sd_result);
-        vga_print(")\n");
+        vga_print("Failed to read a block\n");
         while (true)
             ;
     }

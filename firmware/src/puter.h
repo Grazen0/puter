@@ -73,7 +73,7 @@ constexpr size_t SCREEN_ROWS = 30;
 constexpr size_t SCREEN_COLS = 80;
 constexpr size_t TRAM_SIZE = SCREEN_ROWS * SCREEN_COLS;
 
-constexpr uintptr_t DBG_BASE = 0x0000'FFFFU;
+constexpr uintptr_t DBG_BASE = 0x0001'0000U;
 constexpr uintptr_t TRAM_BASE = 0x0800'0000U;
 constexpr uintptr_t VREGS_BASE = 0x1000'0000U;
 constexpr uintptr_t UART_BASE = 0x1800'0000U;

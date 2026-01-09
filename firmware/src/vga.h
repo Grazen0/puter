@@ -1,7 +1,6 @@
 #ifndef FIRMWARE_VGA_H
 #define FIRMWARE_VGA_H
 
-#include "numeric.h"
 #include <stddef.h>
 
 void vga_init();
@@ -15,7 +14,5 @@ void vga_print(const char s[static 1]);
 #define vga_sprint(s, n) vga_sprint(n, s)
 
 void(vga_sprint)(size_t n, const char s[static n]);
-
-void vga_print_hex(u8 n);
 
 #endif
