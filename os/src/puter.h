@@ -12,10 +12,10 @@ typedef struct {
 } DebugControl;
 
 typedef union {
-    volatile u16 value;
+    u16 value;
     struct {
-        volatile char ch;
-        volatile u8 attr;
+        char ch;
+        u8 attr;
     };
 } TRamEntry;
 
