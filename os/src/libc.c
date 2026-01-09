@@ -21,7 +21,7 @@ uldiv_t uldiv(unsigned long numer, const unsigned long denom)
     };
 
     for (size_t i = 0; i < LONG_WIDTH; ++i) {
-        out.rem = (out.rem << 1) | (((numer >> (LONG_WIDTH - 1)) & 1));
+        out.rem = (out.rem << 1) | ((numer >> (LONG_WIDTH - 1)) & 1);
         numer <<= 1;
         out.quot <<= 1;
 
@@ -63,17 +63,46 @@ int abs(const int x)
 
 long strtol(const char *restrict nptr, char **restrict endptr, const int base)
 {
-    PANIC_IF(base != 10, "supports base 10 only");
+    PANIC_IF(base != 10, "strol supports base 10 only");
 
     long out = 0;
 
+    bool neg = false;
+
+    if (*nptr == '-') {
+        ++nptr;
+        neg = true;
+    }
+
     while (is_digit(*nptr)) {
-        out = (10 * out) + *nptr - '0';
+        const long digit = *nptr - '0';
+        ++nptr;
+
+        out *= 10;
+
+        if (neg)
+            out -= digit;
+        else
+            out += digit;
+    }
+
+    *endptr = (char *)nptr;
+    return out;
+}
+
+unsigned long strtoul(const char *restrict nptr, char **restrict endptr,
+                      const int base)
+{
+    PANIC_IF(base != 10, "strtoul supports base 10 only");
+
+    unsigned long out = 0;
+
+    while (is_digit(*nptr)) {
+        out = (10 * out) + (*nptr - '0');
         ++nptr;
     }
 
     *endptr = (char *)nptr;
-
     return out;
 }
 
@@ -92,4 +121,22 @@ ldiv_t ldiv(const long numer, const long denom)
         .quot = (numer < 0) ^ (denom < 0) ? -(long)res.quot : (long)res.quot,
         .rem = numer < 0 ? -(long)res.rem : (long)res.rem,
     };
+}
+
+int __umodsi3(unsigned a, const unsigned b)
+{
+    PANIC_IF(b == 0, "cannot calculate modulo by 0");
+
+    unsigned rem = 0;
+
+    for (size_t i = 0; i < LONG_WIDTH; ++i) {
+        rem = (rem << 1) | ((a >> (LONG_WIDTH - 1)) & 1);
+        a <<= 1;
+
+        if (rem >= b) {
+            rem -= b;
+        }
+    }
+
+    return (int)rem;
 }

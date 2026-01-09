@@ -1,10 +1,12 @@
 #include "control.h"
 #include "io.h"
 #include "keyboard.h"
+#include "numeric.h"
 #include "puter.h"
 #include "riscv.h"
 #include "rtc.h"
 #include "vga.h"
+#include <stddef.h>
 
 static constexpr char BANNER[] = "\
  ____        _             ___  ____   \n\
@@ -42,17 +44,24 @@ void main()
     printk("Welcome to PuterOS.\n");
     printk("\n");
 
-    for (u8 i = 0; i < 16; ++i)
-        TRAM[i].attr = i << 4;
+    printk(
+        "\033[0;30mBlack   \033[0;90mBright Black   \033[0;40mBlack   \033[0;100mBright Black   \n"
+        "\033[0;31mRed     \033[0;91mBright Red     \033[0;41mRed     \033[0;101mBright Red     \n"
+        "\033[0;32mGreen   \033[0;92mBright Green   \033[0;42mGreen   \033[0;102mBright Green   \n"
+        "\033[0;33mYellow  \033[0;93mBright Yellow  \033[0;43mYellow  \033[0;103mBright Yellow  \n"
+        "\033[0;34mBlue    \033[0;94mBright Blue    \033[0;44mBlue    \033[0;104mBright Blue    \n"
+        "\033[0;35mPurple  \033[0;95mBright Purple  \033[0;45mPurple  \033[0;105mBright Purple  \n"
+        "\033[0;36mCyan    \033[0;96mBright Cyan    \033[0;46mCyan    \033[0;106mBright Cyan    \n"
+        "\033[0;37mWhite   \033[0;97mBright White   \033[0;47mWhite   \033[0;107mBright White   \n"
+        "\033[0;m");
 
     Key key = {};
 
     while (true) {
         kb_process_queue();
 
-        while (kb_poll_key(&key)) {
+        while (kb_poll_key(&key))
             printk("key: %d, mod: %08X\n", key.code, key.mod);
-        }
     }
 }
 
