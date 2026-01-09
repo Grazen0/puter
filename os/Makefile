@@ -38,6 +38,8 @@ OBJCOPY := riscv32-none-elf-objcopy
 BEAR := bear
 CDB := compile_commands.json
 
+UDISKSCTL := udisksctl
+
 .PHONY: all compdb upload clean
 
 all: $(BUILD_DIR)/$(TARGET_BIN)
@@ -45,6 +47,13 @@ all: $(BUILD_DIR)/$(TARGET_BIN)
 compdb:
 	mkdir -p $(BUILD_DIR)
 	$(BEAR) --output $(BUILD_DIR)/$(CDB) -- $(MAKE) -B $(BUILD_DIR)/$(TARGET_EXEC)
+
+upload: $(BUILD_DIR)/$(TARGET_BIN)
+	$(UDISKSCTL) mount -b $(DEV); \
+	MNT_DIR=$$($(UDISKSCTL) info -b $(DEV) | awk -F: '/MountPoints/ {print $$2}' | xargs -n1 echo); \
+	cp $< $$MNT_DIR;
+
+	$(UDISKSCTL) unmount -b $(DEV)
 
 $(BUILD_DIR)/$(TARGET_BIN): $(BUILD_DIR)/$(TARGET_EXEC)
 	$(OBJCOPY) -O binary $< $@
