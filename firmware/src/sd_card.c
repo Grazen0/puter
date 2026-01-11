@@ -20,9 +20,13 @@ typedef enum : u8 {
 } SdCmd;
 
 static constexpr size_t SPI_INIT_FREQ = 100'000U;
-static constexpr size_t SPI_FREQ = 10'000'000U;
+static constexpr size_t SPI_FREQ = 25'000'000U;
 
-static constexpr size_t RES_TIMEOUT_BYTES = SPI_INIT_FREQ / 8;
+static_assert((SYS_CLK_FREQ % (2 * SPI_INIT_FREQ)) == 0,
+              "SPI_INIT_FREQ is not possible");
+static_assert((SYS_CLK_FREQ % (2 * SPI_FREQ)) == 0, "SPI_FREQ is not possible");
+
+static constexpr size_t RES_TIMEOUT_BYTES = 10'000U;
 static constexpr u8 R1_NONE = 0xFF;
 
 static u8 sd_read_r1()

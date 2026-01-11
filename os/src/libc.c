@@ -86,7 +86,9 @@ long strtol(const char *restrict nptr, char **restrict endptr, const int base)
             out += digit;
     }
 
-    *endptr = (char *)nptr;
+    if (endptr != nullptr)
+        *endptr = (char *)nptr;
+
     return out;
 }
 
@@ -102,7 +104,9 @@ unsigned long strtoul(const char *restrict nptr, char **restrict endptr,
         ++nptr;
     }
 
-    *endptr = (char *)nptr;
+    if (endptr != nullptr)
+        *endptr = (char *)nptr;
+
     return out;
 }
 
