@@ -12,7 +12,7 @@ VCD_DUMPS := $(patsubst $(TB_DIR)/%.v,$(BUILD_DIR)/%.vcd,$(TBS))
 INC_DIRS := $(shell find ./include -type d)
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
-override IVERILOG_FLAGS += -DIVERILOG -Wall
+override IVERILOG_FLAGS += -DIVERILOG -Wall -Wno-sensitivity-entire-array
 
 FONT_SRC = ./data/unscii-16.hex
 FONT_TARGET = unscii-16.mem
