@@ -50,7 +50,7 @@ module cache #(
         out_data |= data[set][i];
       end
 
-      if (valid[update_set][i] && update_tag == tags[update_set][i]) begin
+      if (valid[update_set][i] && tags[update_set][i] == update_tag) begin
         update_hit = 1;
       end
     end
@@ -68,7 +68,7 @@ module cache #(
     end else if (!halt) begin
       if (update) begin
         for (i = 0; i < N; i = i + 1) begin
-          if (update_hit) begin
+          if (valid[update_set][i] && tags[update_set][i] == update_tag) begin
             data[update_set][i] <= update_data;
           end
         end
