@@ -14,6 +14,8 @@ SRCS := ./src/control.c \
 		./src/riscv.c \
 		./src/riscv.s \
 		./src/rtc.c \
+		./src/sd_card.c \
+		./src/spi.c \
 		./src/startup.s \
 		./src/uart.c \
 		./src/vga.c
