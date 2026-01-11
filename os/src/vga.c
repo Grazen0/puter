@@ -141,33 +141,71 @@ static void process_csi(const char final_byte)
 {
 
     switch (final_byte) {
-    case 'A': // Cursor up
-        if (ctx.tram_idx >= SCREEN_COLS)
-            ctx.tram_idx -= SCREEN_COLS;
+    case 'A': { // Cursor up
+        unsigned long n = strtoul(ctx.seq_buf, nullptr, 10);
+        if (n == 0)
+            n = 1;
+
+        const size_t off = n * SCREEN_COLS;
+
+        if (ctx.tram_idx > off)
+            ctx.tram_idx -= off;
+        else
+            ctx.tram_idx = ctx.tram_idx % SCREEN_COLS;
 
         update_cursor_pos();
         break;
+    }
 
-    case 'B': // Cursor down
-        if (ctx.tram_idx < TRAM_SIZE - SCREEN_COLS)
-            ctx.tram_idx += SCREEN_COLS;
+    case 'B': { // Cursor down
+        unsigned long n = strtoul(ctx.seq_buf, nullptr, 10);
+        if (n == 0)
+            n = 1;
 
-        update_cursor_pos();
-        break;
+        const size_t off = n * SCREEN_COLS;
 
-    case 'C': // Cursor forward
-        if (((ctx.tram_idx + 1) % SCREEN_COLS) != 0)
-            ++ctx.tram_idx;
-
-        update_cursor_pos();
-        break;
-
-    case 'D': // Cursor backward
-        if ((ctx.tram_idx % SCREEN_COLS) != 0)
-            --ctx.tram_idx;
+        if (ctx.tram_idx + off < TRAM_SIZE)
+            ctx.tram_idx += off;
+        else
+            ctx.tram_idx =
+                TRAM_SIZE - SCREEN_COLS + (ctx.tram_idx % SCREEN_COLS);
 
         update_cursor_pos();
         break;
+    }
+
+    case 'C': { // Cursor forward
+        unsigned long n = strtoul(ctx.seq_buf, nullptr, 10);
+        if (n == 0)
+            n = 1;
+
+        const size_t next_row = ctx.tram_idx + SCREEN_COLS;
+        const size_t bound = next_row - (next_row % SCREEN_COLS);
+
+        if (ctx.tram_idx + n < bound)
+            ctx.tram_idx += n;
+        else
+            ctx.tram_idx = bound - 1;
+
+        update_cursor_pos();
+        break;
+    }
+
+    case 'D': { // Cursor backward
+        unsigned long n = strtoul(ctx.seq_buf, nullptr, 10);
+        if (n == 0)
+            n = 1;
+
+        const size_t bound = ctx.tram_idx - (ctx.tram_idx % SCREEN_COLS);
+
+        if (ctx.tram_idx >= bound + n) // ctx.tram_idx - n >= bound
+            ctx.tram_idx -= n;
+        else
+            ctx.tram_idx = bound;
+
+        update_cursor_pos();
+        break;
+    }
 
     case 'm':
         const char *ptr = ctx.seq_buf;
