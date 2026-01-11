@@ -10,6 +10,7 @@ module cpu #(
 ) (
     input wire clk,
     input wire rst_n,
+    input wire halt,
 
     output wire [XLEN-1:0] instr_addr,
     input  wire [XLEN-1:0] instr_data,
@@ -98,7 +99,7 @@ module cpu #(
   always @(posedge clk) begin
     if (!rst_n) begin
       pc_f <= 0;
-    end else if (!stall_f) begin
+    end else if (!halt && !stall_f) begin
       pc_f <= pc_next_f;
     end
   end
@@ -113,6 +114,7 @@ module cpu #(
   cpu_branch_predictor branch_predictor (
       .clk  (clk),
       .rst_n(rst_n),
+      .halt (halt),
 
       .update_addr (pc_e),
       .update_taken(branch_cond_val_e),
@@ -130,6 +132,7 @@ module cpu #(
   cache jump_target_buffer (
       .clk  (clk),
       .rst_n(rst_n),
+      .halt (halt),
 
       .update_addr(pc_e),
       .update_data(pc_jump_e),
@@ -162,7 +165,7 @@ module cpu #(
       instr_d             <= 32'h0000_0013;  // nop
       pc_d                <= {XLEN{1'bx}};
       pc_plus_4_d         <= {XLEN{1'bx}};
-    end else if (!stall_d) begin
+    end else if (!halt && !stall_d) begin
       bubble_d            <= 0;
 
       branch_pred_taken_d <= branch_pred_taken_f;
@@ -234,7 +237,8 @@ module cpu #(
   cpu_register_file #(
       .XLEN(XLEN)
   ) reg_file (
-      .clk(~clk),
+      .clk (~clk),
+      .halt(halt),
 
       .a1(rs1_d),
       .a2(rs2_d),
@@ -270,6 +274,7 @@ module cpu #(
   ) csr_file (
       .clk  (~clk),
       .rst_n(rst_n),
+      .halt (halt),
 
       .raddr(csrs_d),
       .rdata(csrd_d),
@@ -307,7 +312,7 @@ module cpu #(
 
   always @(posedge clk) begin
     if (!rst_n) int_req_buf <= 0;
-    else int_req_buf <= int_req;
+    else if (!halt) int_req_buf <= int_req;
   end
 
   wire int_ack = int_req_buf &
@@ -407,7 +412,7 @@ module cpu #(
 
       mtvec_e             <= {XLEN{1'bx}};
       mepc_e              <= {XLEN{1'bx}};
-    end else begin
+    end else if (!halt) begin
       bubble_e            <= bubble_d;
 
       branch_pred_taken_e <= branch_pred_taken_d;
@@ -588,7 +593,7 @@ module cpu #(
       rd_m               <= 5'bxxxxx;
       pc_plus_4_m        <= {XLEN{1'bx}};
       pc_target_m        <= {XLEN{1'bx}};
-    end else begin
+    end else if (!halt) begin
       bubble_m           <= bubble_e;
       reg_write_m        <= reg_write_e;
       result_src_m       <= result_src_e;
@@ -668,7 +673,7 @@ module cpu #(
       read_data_w       <= {XLEN{1'bx}};
       csrs_w            <= {11{1'bx}};
       rd_w              <= 5'bxxxxx;
-    end else begin
+    end else if (!halt) begin
       bubble_w          <= bubble_m;
 
       reg_write_w       <= reg_write_m;

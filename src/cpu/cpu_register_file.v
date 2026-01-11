@@ -4,6 +4,7 @@ module cpu_register_file #(
     parameter XLEN = 32
 ) (
     input wire clk,
+    input wire halt,
 
     input wire [     4:0] a1,
     input wire [     4:0] a2,
@@ -19,7 +20,7 @@ module cpu_register_file #(
   reg [31:0] regs[1:REGS-1];
 
   always @(posedge clk) begin
-    if (we3 && a3 != 0) begin
+    if (!halt && we3 && a3 != 0) begin
       regs[a3] <= wd3;
     end
   end

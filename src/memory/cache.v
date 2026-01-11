@@ -8,6 +8,7 @@ module cache #(
 ) (
     input wire clk,
     input wire rst_n,
+    input wire halt,
 
     input wire [XLEN-1:0] update_addr,
     input wire [XLEN-1:0] update_data,
@@ -31,7 +32,7 @@ module cache #(
   wire [TAG_WIDTH-1:0] tag, update_tag;
   wire [SET_WIDTH-1:0] set, update_set;
 
-  assign {tag, set} = addr[XLEN-1:BYTE_OFFSET];
+  assign {tag, set}               = addr[XLEN-1:BYTE_OFFSET];
   assign {update_tag, update_set} = update_addr[XLEN-1:BYTE_OFFSET];
 
   reg update_hit;
@@ -41,12 +42,12 @@ module cache #(
   always @(*) begin
     hit        = 0;
     update_hit = 0;
-    out_data   = {XLEN{1'bx}};
+    out_data   = {XLEN{1'b0}};
 
     for (i = 0; i < N; i = i + 1) begin
       if (valid[set][i] && tag == tags[set][i]) begin
         hit = 1;
-        out_data = data[set][i];
+        out_data |= data[set][i];
       end
 
       if (valid[update_set][i] && update_tag == tags[update_set][i]) begin
@@ -64,10 +65,10 @@ module cache #(
           valid[i][j] <= 0;
         end
       end
-    end else begin
+    end else if (!halt) begin
       if (update) begin
         for (i = 0; i < N; i = i + 1) begin
-          if (valid[update_set][i] && update_tag == tags[update_set][i]) begin
+          if (update_hit) begin
             data[update_set][i] <= update_data;
           end
         end

@@ -8,6 +8,7 @@ module cpu_csr_file #(
 ) (
     input wire clk,
     input wire rst_n,
+    input wire halt,
 
     input wire [11:0] raddr,
     output reg [XLEN-1:0] rdata,
@@ -205,7 +206,7 @@ module cpu_csr_file #(
       mie                    <= {XLEN{1'b0}};
 
       mcycle                 <= 0;
-    end else begin
+    end else if (!halt) begin
       priv     <= priv_next;
 
       mstatus  <= mstatus_next;

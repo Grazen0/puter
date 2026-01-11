@@ -9,6 +9,7 @@ module cpu_branch_predictor #(
 ) (
     input wire clk,
     input wire rst_n,
+    input wire halt,
 
     input wire [XLEN-1:0] update_addr,
     input wire            update_taken,
@@ -30,13 +31,13 @@ module cpu_branch_predictor #(
 
   reg [CTR_WIDTH-1:0] counters[0:SETS-1] [0:N-1];
   reg [TAG_WIDTH-1:0] tags    [0:SETS-1] [0:N-1];
-  reg                 valid   [0:SETS-1] [0:N-1];
+  reg [        N-1:0] valid   [0:SETS-1];
   reg [  N_WIDTH-1:0] idx     [0:SETS-1];
 
   wire [TAG_WIDTH-1:0] tag, update_tag;
   wire [SET_WIDTH-1:0] set, update_set;
 
-  assign {tag, set} = addr[XLEN-1:BYTE_OFFSET];
+  assign {tag, set}               = addr[XLEN-1:BYTE_OFFSET];
   assign {update_tag, update_set} = update_addr[XLEN-1:BYTE_OFFSET];
 
   reg update_hit;
@@ -70,7 +71,7 @@ module cpu_branch_predictor #(
           valid[i][j] <= 0;
         end
       end
-    end else begin
+    end else if (!halt) begin
       if (update) begin
         if (update_hit) begin
           if (update_taken) begin

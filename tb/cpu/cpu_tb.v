@@ -41,6 +41,7 @@ module cpu_tb ();
   cpu cpu (
       .clk  (clk),
       .rst_n(rst_n),
+      .halt (1'b0),
 
       .instr_addr(instr_addr),
       .instr_data(instr_rdata),

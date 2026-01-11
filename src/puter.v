@@ -52,6 +52,7 @@ module puter (
   ) cpu (
       .clk  (sys_clk),
       .rst_n(rst_n),
+      .halt (1'b0),
 
       .instr_addr(instr_addr),
       .instr_data(instr_rdata),
