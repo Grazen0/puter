@@ -366,9 +366,11 @@ void kb_init()
         .num_lock = false,
         .scroll_lock = false,
     };
+
+    PLIC->int_enable[MeiId_Keyboard] = true;
 }
 
-void kb_process_interrupt()
+void kb_process_int()
 {
     kb_scancode_push(KEYBOARD->scancode);
 }

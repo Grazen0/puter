@@ -20,7 +20,9 @@ static void bbuf_load(BlockBuffer bbuf[static const 1], const u32 block_addr)
     const SdReadResult sd_result = sd_read_block(block_addr, bbuf->data);
 
     if (sd_result != SdReadResult_Ok) {
-        vga_print("Failed to read a block\n");
+        vga_print("Failed to read a block (code = ");
+        vga_putchar('0' + sd_result);
+        vga_print(")\n");
         while (true)
             ;
     }
@@ -169,7 +171,7 @@ bool fatwlk_read(FatWalker walker[static const 1],
     u8 *dest_b = dest;
 
     while (n > 0) {
-        if (walker->cur_clus >= fat->eoc_marker)
+        if (walker->cur_clus == fat->eoc_marker)
             return false;
 
         bbuf_load(&scratch_bbuf, fatwlk_cur_block(walker, fat));

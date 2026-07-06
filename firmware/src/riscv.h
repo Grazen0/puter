@@ -2,17 +2,6 @@
 #define FIRMWARE_RISCV_H
 
 #include "numeric.h"
-#include <stdint.h>
-
-typedef enum : u32 {
-    MieBit_Software = 0x008,
-    MieBit_Timer = 0x080,
-    MieBit_External = 0x800,
-} MieBit;
-
-typedef enum : u32 {
-    MStatus_Mie = 0x8,
-} MStatusField;
 
 typedef enum : u32 {
     MCause_Interrupt = 0x8000'0000,
@@ -28,25 +17,5 @@ typedef enum : u32 {
     MCause_MTimerInt = MCause_Interrupt | 7,
     MCause_MExternalInt = MCause_Interrupt | 11,
 } MCause;
-
-char *rv_read_sp();
-
-u32 rv_read_mstatus();
-
-u64 rv_read_mcycle();
-
-u64 rv_read_minstret();
-
-u32 rv_read_mcause();
-
-uintptr_t rv_read_mepc();
-
-void rv_inc_mepc();
-
-void rv_set_mstatus(u32 n);
-
-void rv_set_mie(u32 n);
-
-[[noreturn]] void rv_jump_umode(void fn());
 
 #endif

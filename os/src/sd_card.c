@@ -1,5 +1,6 @@
 #include "sd_card.h"
 #include "numeric.h"
+#include "puter.h"
 #include "spi.h"
 #include <stddef.h>
 
@@ -20,11 +21,10 @@ typedef enum : u8 {
 } SdCmd;
 
 static constexpr size_t SPI_INIT_FREQ = 100'000U;
-static constexpr size_t SPI_FREQ = 25'000'000U;
+static constexpr size_t SPI_FREQ = 12'500'000U;
 
-static_assert((SYS_CLK_FREQ % (2 * SPI_INIT_FREQ)) == 0,
-              "SPI_INIT_FREQ is not possible");
-static_assert((SYS_CLK_FREQ % (2 * SPI_FREQ)) == 0, "SPI_FREQ is not possible");
+static_assert((SYS_CLK_FREQ % (2 * SPI_INIT_FREQ)) == 0);
+static_assert((SYS_CLK_FREQ % (2 * SPI_FREQ)) == 0);
 
 static constexpr size_t RES_TIMEOUT_BYTES = 10'000U;
 static constexpr u8 R1_NONE = 0xFF;
@@ -83,6 +83,7 @@ typedef enum : u8 {
 typedef struct {
     AddressMode address_mode;
     bool ready;
+    volatile bool dma_finished;
 } SdCardContext;
 
 static SdCardContext ctx;
@@ -139,6 +140,7 @@ SdInitResult sd_init()
         .address_mode =
             AddressMode_Byte, // Most SD card types use byte addressing
         .ready = false,
+        .dma_finished = false,
     };
 
     spi_set_hperiod(FREQ_TO_HALF_PERIOD(SPI_INIT_FREQ));
@@ -247,12 +249,15 @@ set_blocklen:
 
 inc_sclk_speed:
     spi_set_hperiod(FREQ_TO_HALF_PERIOD(SPI_FREQ));
+
+    PLIC->int_enable[MeiId_SdDmac] = true;
     ctx.ready = true;
 
     return SdInitResult_Ok;
 }
 
-SdReadResult sd_read_block(u32 block_addr, u8 buf[static SD_BLOCK_SIZE])
+// NOLINTNEXTLINE
+SdReadResult sd_read_block(u32 block_addr, void *const dest)
 {
     if (!ctx.ready)
         return SdReadResult_NotReady;
@@ -294,8 +299,21 @@ SdReadResult sd_read_block(u32 block_addr, u8 buf[static SD_BLOCK_SIZE])
         goto cleanup;
     }
 
-    for (size_t i = 0; i < SD_BLOCK_SIZE; ++i)
-        *buf++ = spi_read();
+    // u8 *dest_b = dest;
+    //
+    // for (size_t i = 0; i < SD_BLOCK_SIZE; ++i)
+    //     *dest_b++ = spi_read();
+
+    // Start DMA transfer from SPI controller to RAM
+    while (!SD_DMAC->ready) {
+    }
+
+    ctx.dma_finished = false;
+    SD_DMAC->load_dest = dest;
+    SD_DMAC->start = 1;
+
+    while (!ctx.dma_finished) {
+    }
 
     // read crc
     const u8 crc_hi = spi_read();
@@ -308,6 +326,11 @@ cleanup:
     spi_write(0xFF);
 
     return result;
+}
+
+void sd_process_dmac_int()
+{
+    ctx.dma_finished = true;
 }
 
 const char *sd_init_result_str(const SdInitResult init_result)

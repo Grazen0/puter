@@ -1,7 +1,10 @@
 #include "disk_format.h"
 #include "numeric.h"
+#include "puter.h"
+#include "riscv.h"
 #include "sd_card.h"
 #include "vga.h"
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -44,7 +47,16 @@ static bool find_kernel_img(FatWalker walker[static const 1],
 
 void main()
 {
+    volatile atomic_int i = 2;
+    i++;
+
     vga_init();
+    vga_print("Loading...\n");
+
+    for (size_t i = 0; i < PLIC_PORTS; ++i) {
+        PLIC->int_enable[i] = false;
+        PLIC->int_priority[i] = 1 + i;
+    }
 
     const SdInitResult sd_result = sd_init();
 
@@ -105,4 +117,16 @@ void main()
     kmain();
 
     unreachable();
+}
+
+[[gnu::interrupt]] void trap_handler()
+{
+    u32 mcause = 0;
+    __asm__ volatile("csrr %0, mcause" : "=r"(mcause));
+
+    if (mcause != MCause_MExternalInt || MEIID != MeiId_SdDmac)
+        return;
+
+    PLIC->int_claim[MeiId_SdDmac] = 1;
+    sd_process_dmac_int();
 }

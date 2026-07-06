@@ -8,6 +8,7 @@ SRCS := ./src/disk_format.c \
 		./src/main.c \
 		./src/numeric.c \
 		./src/puter.c \
+		./src/riscv.c \
 		./src/sd_card.c \
 		./src/spi.c \
 		./src/startup.s \
@@ -20,7 +21,7 @@ OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 INC_DIRS := ./src
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
-override CFLAGS += $(INC_FLAGS) -march=rv32i_zicsr -mabi=ilp32 \
+override CFLAGS += $(INC_FLAGS) -march=rv32i_a_zicsr -mabi=ilp32 \
 		  -std=c23 -nostdlib -nostartfiles -ffreestanding -fomit-frame-pointer \
 		  -g -Oz -ffunction-sections -fdata-sections -fno-pie \
 		  -Wall -Wextra -Wpedantic

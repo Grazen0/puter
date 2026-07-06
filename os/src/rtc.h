@@ -5,8 +5,8 @@
 
 void rtc_init();
 
-void rtc_process_interrupt();
+void rtc_process_int();
 
-void sleep_ms(const u32 ms);
+void sleep_ms(u32 ms);
 
 #endif

@@ -119,7 +119,7 @@ typedef struct {
 
 void kb_init();
 
-void kb_process_interrupt();
+void kb_process_int();
 
 void kb_process_queue();
 

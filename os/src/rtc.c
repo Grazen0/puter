@@ -2,9 +2,9 @@
 #include "numeric.h"
 #include "puter.h"
 
-constexpr size_t MTI_FREQ = 1000;
+static constexpr size_t MTI_FREQ = 1000;
 
-static u32 ticks;
+static volatile u32 ticks;
 
 void rtc_init()
 {
@@ -12,7 +12,7 @@ void rtc_init()
     RTC->mtimecmp = RTC_FREQ / MTI_FREQ;
 }
 
-void rtc_process_interrupt()
+void rtc_process_int()
 {
     RTC->mtime = 0;
     ++ticks;

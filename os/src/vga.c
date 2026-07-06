@@ -301,7 +301,7 @@ static void vga_putchar_inner(const char ch)
         break;
 
     default:
-        PANIC("invalid vga state (state = %u)", ctx.state);
+        PANIC("invalid vga state");
     }
 }
 

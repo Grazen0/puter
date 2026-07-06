@@ -47,7 +47,7 @@ module cache #(
     for (i = 0; i < N; i = i + 1) begin
       if (valid[set][i] && tag == tags[set][i]) begin
         hit = 1;
-        out_data |= data[set][i];
+        out_data = out_data | data[set][i];
       end
 
       if (valid[update_set][i] && tags[update_set][i] == update_tag) begin

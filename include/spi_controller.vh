@@ -1,0 +1,8 @@
+`ifndef PUTER_SPI_CONTROLLER_VH
+`define PUTER_SPI_CONTROLLER_VH
+
+`define SPI_SET_SS 2'b00
+`define SPI_SET_HALF_PERIOD 2'b01
+`define SPI_TRANSFER 2'b10
+
+`endif

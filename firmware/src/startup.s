@@ -5,6 +5,9 @@ _start:
     la      sp, _stack_top
     la      gp, __global_pointer$
 
+    la      t0, trap_handler
+    csrw    mtvec, t0
+
     # Initialize .data
     la      t0, _data_start
     la      t1, _data_end
@@ -29,6 +32,11 @@ clear_bss:
     addi    t0, t0, 4
     j       clear_bss
 bss_done:
+
+    # enable external interrupts
+    li      t0, 0x800
+    csrs    mie, t0
+    csrs    mstatus, 0x8
 
     call    main
     j       .

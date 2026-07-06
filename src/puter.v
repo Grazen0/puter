@@ -1,6 +1,8 @@
 `default_nettype none `timescale 1ns / 1ps
 
-module puter (
+module puter #(
+    parameter XLEN = 32
+) (
     input wire sys_clk,
     input wire vga_clk,
     input wire rt_clk,
@@ -37,22 +39,23 @@ module puter (
   localparam DATA_SEL_KEYBOARD_DATA = 4'd6;
   localparam DATA_SEL_UART = 4'd7;
   localparam DATA_SEL_VREGS = 4'd8;
-  localparam DATA_SEL_SPI = 4'd10;
+  localparam DATA_SEL_SPI = 4'd9;
+  localparam DATA_SEL_SD_DMAC = 4'd10;
 
-  wire [31:0] instr_addr;
-  reg  [31:0] instr_rdata;
+  wire [XLEN-1:0] instr_addr;
+  reg [XLEN-1:0] instr_rdata;
 
-  wire [31:0] data_addr;
-  wire [31:0] data_wdata;
-  wire [ 3:0] data_wenable;
-  reg  [31:0] data_rdata;
+  wire [XLEN-1:0] data_addr;
+  wire [XLEN-1:0] data_wdata;
+  wire [3:0] data_wenable;
+  reg [XLEN-1:0] data_rdata;
 
   cpu #(
       .MEI_PORTS(MEI_PORTS)
   ) cpu (
       .clk  (sys_clk),
       .rst_n(rst_n),
-      .halt (1'b0),
+      .halt (sd_dmac_ram_req),
 
       .instr_addr(instr_addr),
       .instr_data(instr_rdata),
@@ -70,13 +73,13 @@ module puter (
   reg [3:0] data_sel;
 
   always @(*) begin
-    casez (instr_addr[31])
+    casez (instr_addr[XLEN-1])
       1'b0:    instr_sel = INSTR_SEL_ROM;
       1'b1:    instr_sel = INSTR_SEL_RAM;
       default: instr_sel = 1'bx;
     endcase
 
-    casez (data_addr[31:27])
+    casez (data_addr[XLEN-1:XLEN-5])
       5'b0000_0: data_sel = DATA_SEL_ROM;
       5'b0000_1: data_sel = DATA_SEL_TRAM;
       5'b0001_0: data_sel = DATA_SEL_VREGS;
@@ -85,7 +88,8 @@ module puter (
       5'b0010_1: data_sel = DATA_SEL_RTC;
       5'b0011_0: data_sel = DATA_SEL_KEYBOARD_DATA;
       5'b0011_1: data_sel = DATA_SEL_PLIC;
-      5'b01zz_z: data_sel = DATA_SEL_MEI_ID;
+      5'b010z_z: data_sel = DATA_SEL_MEI_ID;
+      5'b011z_z: data_sel = DATA_SEL_SD_DMAC;
       5'b1zzz_z: data_sel = DATA_SEL_RAM;
       default:   data_sel = 4'bxxxx;
     endcase
@@ -114,12 +118,13 @@ module puter (
       DATA_SEL_PLIC:          data_rdata = plic_rdata;
       DATA_SEL_MEI_ID:        data_rdata = mei_id;
       DATA_SEL_KEYBOARD_DATA: data_rdata = keyboard_data;
+      DATA_SEL_SD_DMAC:       data_rdata = sd_dmac_ready;
       default:                data_rdata = {32{1'bx}};
     endcase
   end
 
-  wire [31:0] rom_rinstr;
-  wire [31:0] rom_rdata;
+  wire [XLEN-1:0] rom_rinstr;
+  wire [XLEN-1:0] rom_rdata;
 
   dual_word_rom #(
       .SIZE_BYTES(8 * (2 ** 10)),  // 8K
@@ -132,18 +137,18 @@ module puter (
       .rdata_2(rom_rdata)
   );
 
-  wire [31:0] ram_rdata;
-  wire [31:0] ram_rinstr;
+  wire [XLEN-1:0] ram_rdata;
+  wire [XLEN-1:0] ram_rinstr;
 
   dual_word_ram #(
       .SIZE_BYTES(32 * (2 ** 10))  // 32K
   ) ram (
       .clk(sys_clk),
 
-      .addr_1   (data_addr[14:0]),
-      .wdata_1  (data_wdata),
-      .wenable_1(data_wenable & {4{data_sel == DATA_SEL_RAM}}),
-      .rdata_1  (ram_rdata),
+      .addr_1(sd_dmac_ram_req ? sd_dmac_ram_addr[14:0] : data_addr[14:0]),
+      .wdata_1(sd_dmac_ram_req ? sd_dmac_ram_wdata : data_wdata),
+      .wenable_1(sd_dmac_ram_req ? sd_dmac_ram_wenable : data_wenable & {4{data_sel == DATA_SEL_RAM}}),
+      .rdata_1(ram_rdata),
 
       .addr_2 (instr_addr[14:0]),
       .rdata_2(ram_rinstr)
@@ -176,7 +181,7 @@ module puter (
       .v_sync   (v_sync)
   );
 
-  wire [31:0] rtc_rdata;
+  wire [XLEN-1:0] rtc_rdata;
   wire mti_pending;
 
   rt_counter rt_counter (
@@ -211,7 +216,7 @@ module puter (
       .wenable(|data_wenable && data_sel == DATA_SEL_PLIC),
       .rdata(plic_rdata),
 
-      .int_signal({1'b0, keyboard_valid}),
+      .int_signal({sd_dmac_int_req, keyboard_valid}),
 
       .out_int_pending(mei_pending),
       .out_int_id     (mei_id)
@@ -252,16 +257,55 @@ module puter (
       .clk  (sys_clk),
       .rst_n(rst_n),
 
-      .cmd        (data_addr[1:0]),
-      .data       (data_wdata[7:0]),
-      .start      (data_wenable[0] && data_sel == DATA_SEL_SPI),
-      .ready      (spi_ready),
+      .cmd(sd_dmac_spi_req ? sd_dmac_spi_cmd : data_addr[1:0]),
+      .data(sd_dmac_spi_req ? sd_dmac_spi_wdata : data_wdata[7:0]),
+      .start(sd_dmac_spi_req ? sd_dmac_spi_start : (data_wenable[0] && data_sel == DATA_SEL_SPI)),
+      .ready(spi_ready),
       .rdata_valid(spi_rdata_valid),
-      .rdata      (spi_rdata),
+      .rdata(spi_rdata),
 
       .sclk(sd_sclk),
       .ss  (sd_cs),
       .miso(sd_miso),
       .mosi(sd_mosi)
+  );
+
+  wire            sd_dmac_ready;
+
+  wire [     1:0] sd_dmac_spi_cmd;
+  wire [     7:0] sd_dmac_spi_wdata;
+  wire            sd_dmac_spi_start;
+  wire            sd_dmac_spi_req;
+
+  wire [XLEN-1:0] sd_dmac_ram_addr;
+  wire [XLEN-1:0] sd_dmac_ram_wdata;
+  wire [     3:0] sd_dmac_ram_wenable;
+  wire            sd_dmac_ram_req;
+
+  wire            sd_dmac_int_req;
+
+  sd_card_dmac sd_dmac (
+      .clk  (sys_clk),
+      .rst_n(rst_n),
+
+      .ready(sd_dmac_ready),
+      .op   (data_addr[2]),
+      .wdata(data_wdata),
+      .start(data_wenable[0] & data_sel == DATA_SEL_SD_DMAC),
+
+      .spi_ready      (spi_ready),
+      .spi_cmd        (sd_dmac_spi_cmd),
+      .spi_wdata      (sd_dmac_spi_wdata),
+      .spi_start      (sd_dmac_spi_start),
+      .spi_rdata      (spi_rdata),
+      .spi_rdata_valid(spi_rdata_valid),
+      .spi_req        (sd_dmac_spi_req),
+
+      .ram_addr   (sd_dmac_ram_addr),
+      .ram_wdata  (sd_dmac_ram_wdata),
+      .ram_wenable(sd_dmac_ram_wenable),
+      .ram_req    (sd_dmac_ram_req),
+
+      .int_req(sd_dmac_int_req)
   );
 endmodule

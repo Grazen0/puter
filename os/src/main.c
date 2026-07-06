@@ -5,6 +5,7 @@
 #include "puter.h"
 #include "riscv.h"
 #include "rtc.h"
+#include "sd_card.h"
 #include "vga.h"
 #include <stddef.h>
 
@@ -25,7 +26,7 @@ void main()
 
     printk("Initializing PLIC...\n");
     for (size_t i = 0; i < PLIC_PORTS; ++i) {
-        PLIC->int_enable[i] = 1;
+        PLIC->int_enable[i] = false;
         PLIC->int_priority[i] = 1 + i;
     }
 
@@ -53,7 +54,31 @@ void main()
         "\033[0;35mPurple  \033[0;95mBright Purple  \033[0;45mPurple  \033[0;105mBright Purple  \n"
         "\033[0;36mCyan    \033[0;96mBright Cyan    \033[0;46mCyan    \033[0;106mBright Cyan    \n"
         "\033[0;37mWhite   \033[0;97mBright White   \033[0;47mWhite   \033[0;107mBright White   \n"
-        "\033[0;m");
+        "\033[0m\n");
+
+    const SdInitResult sd_result = sd_init();
+
+    if (sd_result != SdInitResult_Ok) {
+        printk("failed to init sd: %i\n", sd_result);
+        return;
+    }
+
+    printk("inited sd\n");
+
+    u8 buf[SD_BLOCK_SIZE];
+
+    for (size_t i = 0;; ++i) {
+        auto const res = sd_read_block(0, buf);
+
+        if (res != SdReadResult_Ok) {
+            printk("failed to read\n");
+            break;
+        }
+
+        printk("\r%zu", i);
+    }
+
+    printk("\n");
 
     Key key = {};
 
@@ -71,7 +96,7 @@ void main()
 
     switch (mcause) {
     case MCause_MTimerInt:
-        rtc_process_interrupt();
+        rtc_process_int();
         break;
 
     case MCause_MExternalInt:
@@ -79,13 +104,19 @@ void main()
 
         PLIC->int_claim[int_id] = 1;
 
-        if (int_id == MeiId_Keyboard)
-            kb_process_interrupt();
+        static void (*const mei_handlers[])() = {
+            [MeiId_Keyboard] = kb_process_int,
+            [MeiId_SdDmac] = sd_process_dmac_int,
+        };
 
+        if (int_id >= MeiId_Num)
+            PANIC("unrecognized interrupt id");
+
+        mei_handlers[int_id]();
         break;
 
     case MCause_IllegalInstr:
-        PANIC("Illegal instruction (pc = 0x%08X)\n", rv_read_mepc());
+        PANIC("Illegal instruction\n");
 
     case MCause_UEcall:
         printk("User ecall\n");
@@ -93,6 +124,6 @@ void main()
         break;
 
     default:
-        PANIC("Unknown trap (mcause = 0x%08X)\n", mcause);
+        PANIC("Unknown trap\n");
     }
 }

@@ -2,13 +2,18 @@
 #define PUTEROS_CONTROL_h
 
 #include "io.h"
+#include "vga.h"
 
-#define PANIC(...)                                             \
-    do {                                                       \
-        printk("PANIC (%s:%lld)\n", __FILE__, __LINE__ + 0LL); \
-        __VA_OPT__(printk(__VA_ARGS__);)                       \
-        while (true) {                                         \
-        }                                                      \
+#define STRINGIFY(X) #X
+
+#define STRGY(X) STRINGIFY(X)
+
+#define PANIC(message)                                                        \
+    do {                                                                      \
+        vga_print("PANIC (" STRGY(__FILE__) ":" STRGY(__LINE__) "): " message \
+                                                                "\n");        \
+        while (true) {                                                        \
+        }                                                                     \
     } while (false)
 
 #define PANIC_IF(cond, ...)     \

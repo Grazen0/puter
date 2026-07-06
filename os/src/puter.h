@@ -65,8 +65,21 @@ typedef struct {
     volatile u8 int_claim[PLIC_PORTS];
 } Plic;
 
+typedef union {
+    struct {
+        const volatile bool ready;
+    };
+    struct {
+        volatile u8 start;
+        void *volatile load_dest;
+    };
+} SdDmac;
+
 typedef enum : u8 {
     MeiId_Keyboard = 0,
+    MeiId_SdDmac,
+
+    MeiId_Num,
 } MeiId;
 
 constexpr size_t SCREEN_ROWS = 30;
@@ -82,6 +95,7 @@ constexpr uintptr_t RTC_BASE = 0x2800'0000U;
 constexpr uintptr_t KEYBOARD_BASE = 0x3000'0000U;
 constexpr uintptr_t PLIC_BASE = 0x3800'0000U;
 constexpr uintptr_t MEIID_BASE = 0x4000'0000U;
+constexpr uintptr_t SD_DMAC_BASE = 0x6000'0000U;
 
 #define DBG ((DebugControl *)DBG_BASE)
 #define TRAM ((TRamEntry *)TRAM_BASE)
@@ -92,5 +106,6 @@ constexpr uintptr_t MEIID_BASE = 0x4000'0000U;
 #define KEYBOARD ((Keyboard *)KEYBOARD_BASE)
 #define PLIC ((Plic *)PLIC_BASE)
 #define MEIID (*(volatile u8 *)MEIID_BASE)
+#define SD_DMAC ((SdDmac *)SD_DMAC_BASE)
 
 #endif

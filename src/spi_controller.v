@@ -1,4 +1,5 @@
 `default_nettype none `timescale 1ns / 1ps
+`include "spi_controller.vh"
 
 module spi_controller #(
     parameter CLK_FREQ = 50_000_000,
@@ -24,10 +25,6 @@ module spi_controller #(
     input  wire miso,
     output reg  mosi
 );
-  localparam CMD_SET_SS = 2'b00;
-  localparam CMD_SET_HALF_PERIOD = 2'b01;
-  localparam CMD_TRANSFER = 2'b1z;
-
   localparam S_IDLE = 2'd0;
   localparam S_CLK_DOWN = 2'd1;
   localparam S_CLK_UP = 2'd2;
@@ -64,10 +61,10 @@ module spi_controller #(
         sclk_next = 0;
 
         if (start) begin
-          casez (cmd)
-            CMD_SET_SS:          ss_next = data[0];
-            CMD_SET_HALF_PERIOD: half_period_next = data;
-            CMD_TRANSFER: begin
+          case (cmd)
+            `SPI_SET_SS:          ss_next = data[0];
+            `SPI_SET_HALF_PERIOD: half_period_next = data;
+            `SPI_TRANSFER: begin
               state_next    = S_CLK_DOWN;
               data_buf_next = data;
               bit_ctr_next  = 0;
@@ -107,12 +104,21 @@ module spi_controller #(
       default: state_next = S_IDLE;
     endcase
 
-    if (state_next == S_CLK_DOWN) begin
-      sclk_next = 0;
-      mosi_next = data_buf_next[7];
-    end else if (state_next == S_CLK_UP) begin
-      sclk_next = 1;
-    end
+    case (state_next)
+      S_IDLE: begin
+        sclk_next = 0;
+      end
+      S_CLK_DOWN: begin
+        sclk_next = 0;
+        mosi_next = data_buf_next[7];
+      end
+      S_CLK_UP: begin
+
+        sclk_next = 1;
+      end
+      default: begin
+      end
+    endcase
   end
 
   always @(posedge clk) begin
